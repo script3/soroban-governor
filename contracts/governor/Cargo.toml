@@ -1,0 +1,20 @@
+[package]
+name = "soroban-governor"
+version = "0.0.0"
+authors = ["Script3 Ltd. <gm@script3.io>"]
+license = "AGPL-3.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+[features]
+testutils = ["soroban-sdk/testutils"]
+
+[dependencies]
+soroban-sdk = { workspace = true }
+
+[dev_dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
