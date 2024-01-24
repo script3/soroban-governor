@@ -7,3 +7,5 @@ mod contract;
 mod errors;
 mod governor;
 mod storage;
+mod testutils;
+pub use contract::*;
