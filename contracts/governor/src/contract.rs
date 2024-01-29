@@ -3,7 +3,7 @@ use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Env, String
 use crate::dependencies::VotesClient;
 use crate::errors::GovernorError;
 use crate::governor::Governor;
-use crate::storage::{self, CallData, GovernorSettings, Proposal, SubCallData, MAX_VOTE_PERIOD};
+use crate::storage::{self, Calldata, GovernorSettings, Proposal, SubCalldata, MAX_VOTE_PERIOD};
 #[contract]
 pub struct GovernorContract;
 
@@ -14,7 +14,7 @@ impl Governor for GovernorContract {
             panic_with_error!(&e, GovernorError::AlreadyInitializedError);
         }
         if settings.vote_delay + settings.vote_period + settings.timelock > MAX_VOTE_PERIOD {
-            panic_with_error!(&e, GovernorError::InternalError)
+            panic_with_error!(&e, GovernorError::InvalidSettingsError)
         }
 
         storage::set_voter_token_address(&e, &votes);
@@ -29,8 +29,8 @@ impl Governor for GovernorContract {
     fn propose(
         e: Env,
         creator: Address,
-        calldata: CallData,
-        sub_calldata: Vec<SubCallData>,
+        calldata: Calldata,
+        sub_calldata: Vec<SubCalldata>,
         title: String,
         description: String,
     ) -> u32 {
@@ -86,7 +86,7 @@ impl Governor for GovernorContract {
 #[cfg(test)]
 mod tests {
     use crate::dependencies::{VotesClient, VOTES_WASM};
-    use crate::storage::{self, CallData, GovernorSettings, ProposalStatus, SubCallData};
+    use crate::storage::{self, Calldata, GovernorSettings, ProposalStatus, SubCalldata};
     use crate::testutils::create_govenor;
     use crate::{GovernorContract, GovernorContractClient};
     use soroban_sdk::testutils::Address as _;
@@ -122,7 +122,7 @@ mod tests {
         govenor.initialize(&votes_address, &settings);
     }
     #[test]
-    #[should_panic(expected = "Error(Contract, #1)")]
+    #[should_panic(expected = "Error(Contract, #2)")]
     fn test_initalize_proprosal_exceeds_time_length() {
         let e = Env::default();
         let address = e.register_contract(None, GovernorContract {});
@@ -148,14 +148,14 @@ mod tests {
         let creater = Address::generate(&e);
 
         votes_client.set_votes(&creater, &1000_i128);
-        let calldata = CallData {
+        let calldata = Calldata {
             contract_id: Address::generate(&e),
             function: Symbol::new(&e, "test"),
             args: (1, 2, 3).into_val(&e),
         };
         let sub_calldata = &vec![
             &e,
-            SubCallData {
+            SubCalldata {
                 contract_id: Address::generate(&e),
                 function: Symbol::new(&e, "test"),
                 args: (1, 2, 3).into_val(&e),
@@ -214,14 +214,14 @@ mod tests {
         let creater = Address::generate(&e);
 
         votes_client.set_votes(&creater, &0_i128);
-        let calldata = CallData {
+        let calldata = Calldata {
             contract_id: Address::generate(&e),
             function: Symbol::new(&e, "test"),
             args: (1, 2, 3).into_val(&e),
         };
         let sub_calldata = &vec![
             &e,
-            SubCallData {
+            SubCalldata {
                 contract_id: Address::generate(&e),
                 function: Symbol::new(&e, "test"),
                 args: (1, 2, 3).into_val(&e),
