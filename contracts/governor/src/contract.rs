@@ -46,6 +46,7 @@ impl Governor for GovernorContract {
         let vote_end = vote_start + settings.vote_period;
         storage::set_proposal(
             &e,
+            &proposal_id,
             &Proposal {
                 id: proposal_id,
                 title,
