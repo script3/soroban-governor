@@ -6,12 +6,14 @@ test: build
 build:
 	cargo rustc --manifest-path=contracts/votes/Cargo.toml --crate-type=cdylib --target=wasm32-unknown-unknown --release
 	cargo rustc --manifest-path=contracts/governor/Cargo.toml --crate-type=cdylib --target=wasm32-unknown-unknown --release
+	cargo rustc --manifest-path=contracts/mock-vote/Cargo.toml --crate-type=cdylib --target=wasm32-unknown-unknown --release
+
 	mkdir -p target/wasm32-unknown-unknown/optimized
 	soroban contract optimize \
-		--wasm target/wasm32-unknown-unknown/release/votes.wasm \
+		--wasm target/wasm32-unknown-unknown/release/soroban_votes.wasm \
 		--wasm-out target/wasm32-unknown-unknown/optimized/votes.wasm
 	soroban contract optimize \
-		--wasm target/wasm32-unknown-unknown/release/governor.wasm \
+		--wasm target/wasm32-unknown-unknown/release/soroban_governor.wasm \
 		--wasm-out target/wasm32-unknown-unknown/optimized/governor.wasm
 	cd target/wasm32-unknown-unknown/optimized/ && \
 		for i in *.wasm ; do \
