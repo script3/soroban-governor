@@ -1,8 +1,8 @@
 use soroban_sdk::{
-    contracttype, panic_with_error, unwrap::UnwrapOptimized, Address, Env, IntoVal, String, Symbol, TryFromVal, Val, Vec
+    contracttype, unwrap::UnwrapOptimized, Address, Env, IntoVal, String, Symbol, TryFromVal, Val,
+    Vec,
 };
 
-use crate::errors::GovernorError;
 /// The governor settings for managing proposals
 #[derive(Clone)]
 #[contracttype]
@@ -31,16 +31,16 @@ pub struct GovernorSettings {
 #[derive(Clone)]
 #[contracttype]
 pub struct CallData {
-    pub contract_address: Address,
-    pub function: String,
+    pub contract_id: Address,
+    pub function: Symbol,
     pub args: Vec<Val>,
 }
 /// Object for storing Pre-auth call data
 #[derive(Clone)]
 #[contracttype]
 pub struct SubCallData {
-    pub contract_address: Address,
-    pub function: String,
+    pub contract_id: Address,
+    pub function: Symbol,
     pub args: Vec<Val>,
     pub sub_auth: Vec<SubCallData>,
 }
@@ -49,6 +49,7 @@ pub struct SubCallData {
 #[derive(Clone)]
 #[contracttype]
 pub struct Proposal {
+    pub id: u32,
     pub title: String,
     pub description: String,
     pub proposer: Address,
@@ -62,6 +63,7 @@ const VOTER_TOKEN_ADDRESS_KEY: &str = "Votes";
 const SETTINGS_KEY: &str = "Settings";
 const IS_INIT_KEY: &str = "IsInit";
 const PROPOSAL_ID_KEY: &str = "ProposalId";
+const PROPOSAL_KEY: &str = "Proposals";
 pub(crate) const LEDGER_THRESHOLD_SHARED: u32 = 172800; // ~ 10 days
 pub(crate) const LEDGER_BUMP_SHARED: u32 = 241920; // ~ 14 days
 pub(crate) const MAX_VOTE_PERIOD: u64 = 1814400; // ~ 21 days represented in seconds
@@ -70,8 +72,7 @@ pub(crate) const MAX_VOTE_PERIOD: u64 = 1814400; // ~ 21 days represented in sec
 #[contracttype]
 pub enum GovernorDataKey {
     // A map of underlying asset's contract address to reserve config
-    Proposals(u32),
-    ProposalStatus(u32)
+    ProposalStatus(u32),
 }
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
@@ -134,13 +135,13 @@ pub fn set_is_init(e: &Env) {
         .set::<Symbol, bool>(&Symbol::new(e, IS_INIT_KEY), &true);
 }
 
-pub fn set_voter_token_address(e: &Env, voter: Address) {
+pub fn set_voter_token_address(e: &Env, voter: &Address) {
     e.storage()
         .instance()
         .set::<Symbol, Address>(&Symbol::new(&e, VOTER_TOKEN_ADDRESS_KEY), &voter);
 }
 
-pub fn set_settings(e: &Env, settings: GovernorSettings) {
+pub fn set_settings(e: &Env, settings: &GovernorSettings) {
     e.storage()
         .instance()
         .set::<Symbol, GovernorSettings>(&Symbol::new(&e, SETTINGS_KEY), &settings);
@@ -161,7 +162,7 @@ pub fn get_settings(e: &Env) -> GovernorSettings {
 }
 
 /********** Proposal **********/
-pub fn set_proposal_id(e: &Env, proposal_id: u32) {
+pub fn set_proposal_id(e: &Env, proposal_id: &u32) {
     let key = Symbol::new(&e, PROPOSAL_ID_KEY);
     e.storage()
         .persistent()
@@ -173,44 +174,101 @@ pub fn set_proposal_id(e: &Env, proposal_id: u32) {
 
 pub fn get_proposal_id(e: &Env) -> u32 {
     let key = Symbol::new(&e, PROPOSAL_ID_KEY);
-    get_persistent_default::<Symbol, u32>(&e, &key, 0_u32, LEDGER_THRESHOLD_SHARED, LEDGER_BUMP_SHARED)
+    get_persistent_default::<Symbol, u32>(
+        &e,
+        &key,
+        0_u32,
+        LEDGER_THRESHOLD_SHARED,
+        LEDGER_BUMP_SHARED,
+    )
 }
 
-pub fn get_proposal(e: &Env, proposal_id: u32) -> Option<Proposal> {
-    let key = GovernorDataKey::Proposals(proposal_id);
-    if let Some(result) = e.storage().temporary().get::<GovernorDataKey, Proposal>(&key) {
-        e.storage()
-            .temporary()
-            .extend_ttl(&key, LEDGER_THRESHOLD_SHARED, LEDGER_BUMP_SHARED);
-        Some(result)
-    } else {
-        None
+/// Fetch proposal at `proposal_id`
+///
+/// ### Arguments
+/// * `proposal_id` - The id of the proposal to fetch
+pub fn get_proposal(e: &Env, proposal_id: &u32) -> Option<Proposal> {
+    let key = Symbol::new(&e, PROPOSAL_KEY);
+    let proposals: Vec<Proposal> = get_temporary_default(
+        &e,
+        &key,
+        Vec::new(&e),
+        LEDGER_THRESHOLD_SHARED,
+        LEDGER_BUMP_SHARED,
+    );
+    for proposal in proposals.into_iter() {
+        if proposal.id == *proposal_id {
+            return Some(proposal);
+        }
     }
+    None
 }
 
-pub fn set_proposal(e: &Env, id: u32, proposal: Proposal) {
-    let key = GovernorDataKey::Proposals(id);
+/// Store proposal in vec of proposals
+///
+/// ### Arguments
+/// * `proposal` - The proposal to store
+pub fn set_proposal(e: &Env, proposal: &Proposal) {
+    let key = Symbol::new(&e, PROPOSAL_KEY);
+    let mut proposals = get_temporary_default(
+        &e,
+        &key,
+        Vec::new(&e),
+        LEDGER_THRESHOLD_SHARED,
+        LEDGER_BUMP_SHARED,
+    );
+    proposals.push_back(proposal.clone());
     e.storage()
         .temporary()
-        .set::<GovernorDataKey, Proposal>(&key, &proposal);
+        .set::<Symbol, Vec<Proposal>>(&key, &proposals);
     e.storage()
         .temporary()
         .extend_ttl(&key, LEDGER_THRESHOLD_SHARED, LEDGER_BUMP_SHARED);
-} 
-
-pub fn get_proposal_status(e: &Env, proposal_id: u32) -> Option<ProposalStatus> {
-    let key = GovernorDataKey::ProposalStatus(proposal_id);
-    get_temporary_default::<GovernorDataKey, Option<ProposalStatus>>(&e, &key, None, LEDGER_THRESHOLD_SHARED, LEDGER_BUMP_SHARED)
+}
+/// Remove proposal at `proposal_id` from vec of proposals
+///
+/// ### Arguments
+/// * `proposal_id` - The id of the proposal to remove
+pub fn remove_proposal(e: &Env, proposal_id: &u32) {
+    let key = Symbol::new(&e, PROPOSAL_KEY);
+    let mut proposals: Vec<Proposal> = get_temporary_default(
+        &e,
+        &key,
+        Vec::new(&e),
+        LEDGER_THRESHOLD_SHARED,
+        LEDGER_BUMP_SHARED,
+    );
+    for (index, proposal) in proposals.iter().enumerate() {
+        if proposal.id == *proposal_id {
+            proposals.remove(index as u32).unwrap()
+        }
+    }
+    e.storage()
+        .temporary()
+        .set::<Symbol, Vec<Proposal>>(&key, &proposals);
+    e.storage()
+        .temporary()
+        .extend_ttl(&key, LEDGER_THRESHOLD_SHARED, LEDGER_BUMP_SHARED);
+    // for index, proposal
 }
 
-pub fn set_proposal_status(e: &Env, id: u32, proposal_status: ProposalStatus) {
-    let key = GovernorDataKey::ProposalStatus(id);
+pub fn get_proposal_status(e: &Env, proposal_id: &u32) -> ProposalStatus {
+    let key = GovernorDataKey::ProposalStatus(*proposal_id);
+    get_temporary_default::<GovernorDataKey, ProposalStatus>(
+        &e,
+        &key,
+        ProposalStatus::Pending,
+        LEDGER_THRESHOLD_SHARED,
+        LEDGER_BUMP_SHARED,
+    )
+}
+
+pub fn set_proposal_status(e: &Env, id: &u32, proposal_status: &ProposalStatus) {
+    let key = GovernorDataKey::ProposalStatus(*id);
     e.storage()
         .temporary()
         .set::<GovernorDataKey, ProposalStatus>(&key, &proposal_status);
     e.storage()
         .temporary()
         .extend_ttl(&key, LEDGER_THRESHOLD_SHARED, LEDGER_BUMP_SHARED);
-} 
-
-
+}
