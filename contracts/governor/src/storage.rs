@@ -3,6 +3,15 @@ use soroban_sdk::{
     Vec,
 };
 
+const VOTER_TOKEN_ADDRESS_KEY: &str = "Votes";
+const SETTINGS_KEY: &str = "Settings";
+const IS_INIT_KEY: &str = "IsInit";
+const PROPOSAL_ID_KEY: &str = "ProposalId";
+const PROPOSAL_KEY: &str = "Proposals";
+pub(crate) const LEDGER_THRESHOLD_SHARED: u32 = 172800; // ~ 10 days
+pub(crate) const LEDGER_BUMP_SHARED: u32 = 241920; // ~ 14 days
+pub(crate) const MAX_VOTE_PERIOD: u64 = 1814400; // ~ 21 days represented in seconds
+
 /// The governor settings for managing proposals
 #[derive(Clone)]
 #[contracttype]
@@ -30,7 +39,7 @@ pub struct GovernorSettings {
 /// Object for storing call data
 #[derive(Clone)]
 #[contracttype]
-pub struct CallData {
+pub struct Calldata {
     pub contract_id: Address,
     pub function: Symbol,
     pub args: Vec<Val>,
@@ -38,11 +47,11 @@ pub struct CallData {
 /// Object for storing Pre-auth call data
 #[derive(Clone)]
 #[contracttype]
-pub struct SubCallData {
+pub struct SubCalldata {
     pub contract_id: Address,
     pub function: Symbol,
     pub args: Vec<Val>,
-    pub sub_auth: Vec<SubCallData>,
+    pub sub_auth: Vec<SubCalldata>,
 }
 
 /// Object for storing proposals
@@ -53,20 +62,11 @@ pub struct Proposal {
     pub title: String,
     pub description: String,
     pub proposer: Address,
-    pub calldata: CallData,
-    pub sub_calldata: Vec<SubCallData>,
+    pub calldata: Calldata,
+    pub sub_calldata: Vec<SubCalldata>,
     pub vote_start: u64,
     pub vote_end: u64,
 }
-
-const VOTER_TOKEN_ADDRESS_KEY: &str = "Votes";
-const SETTINGS_KEY: &str = "Settings";
-const IS_INIT_KEY: &str = "IsInit";
-const PROPOSAL_ID_KEY: &str = "ProposalId";
-const PROPOSAL_KEY: &str = "Proposals";
-pub(crate) const LEDGER_THRESHOLD_SHARED: u32 = 172800; // ~ 10 days
-pub(crate) const LEDGER_BUMP_SHARED: u32 = 241920; // ~ 14 days
-pub(crate) const MAX_VOTE_PERIOD: u64 = 1814400; // ~ 21 days represented in seconds
 
 #[derive(Clone)]
 #[contracttype]
@@ -74,6 +74,7 @@ pub enum GovernorDataKey {
     // A map of underlying asset's contract address to reserve config
     ProposalStatus(u32),
 }
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
 #[contracttype]

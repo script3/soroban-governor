@@ -1,6 +1,6 @@
 use soroban_sdk::{contractclient, Address, Env, String, Vec};
 
-use crate::storage::{CallData, GovernorSettings, SubCallData};
+use crate::storage::{Calldata, GovernorSettings, SubCalldata};
 
 #[contractclient(name = "GovernorClient")]
 pub trait Governor {
@@ -30,8 +30,8 @@ pub trait Governor {
     fn propose(
         e: Env,
         creator: Address,
-        calldata: CallData,
-        sub_calldata: Vec<SubCallData>,
+        calldata: Calldata,
+        sub_calldata: Vec<SubCalldata>,
         title: String,
         description: String,
     ) -> u32;
