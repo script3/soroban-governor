@@ -19,4 +19,5 @@ pub enum GovernorError {
     NonExistentProposalError = 13,
     ProposalNotActiveError = 14,
     InvalidProposalSupportError = 15,
+    VotePeriodNotFinishedError = 16,
 }
