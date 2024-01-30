@@ -80,7 +80,48 @@ impl Governor for GovernorContract {
     }
 
     fn vote(e: Env, voter: Address, proposal_id: u32, support: u32) {
-        todo!()
+        voter.require_auth();
+        let proposal = storage::get_proposal(&e, &proposal_id);
+        if proposal.is_none() {
+            panic_with_error!(&e, GovernorError::NonExistentProposalError);
+        }
+
+        let proposal = proposal.unwrap_optimized();
+        let proposal_status = storage::get_proposal_status(&e, &proposal_id);
+        if proposal_status != ProposalStatus::Active {
+            if proposal_status == ProposalStatus::Pending
+                && proposal.vote_start <= e.ledger().timestamp()
+            {
+                storage::set_proposal_status(&e, &proposal_id, &ProposalStatus::Active)
+            } else {
+                panic_with_error!(&e, GovernorError::ProposalNotActiveError);
+            }
+        }
+
+        let voter_power = VotesClient::new(&e, &storage::get_voter_token_address(&e))
+            .get_past_votes(&voter, &proposal.vote_start);
+        let mut vote_count = storage::get_proposal_vote_count(&e, &proposal_id);
+        let voter_status = storage::get_voter_status(&e, &voter, &proposal_id);
+
+        // Check if voter has already voted and remove previous vote from count
+        if let Some(voter_status) = voter_status {
+            match voter_status {
+                0 => vote_count.votes_abstained -= voter_power,
+                1 => vote_count.votes_against -= voter_power,
+                2 => vote_count.votes_for -= voter_power,
+                _ => (),
+            }
+        }
+
+        match support {
+            0 => vote_count.votes_abstained += voter_power,
+            1 => vote_count.votes_against += voter_power,
+            2 => vote_count.votes_for += voter_power,
+            _ => panic_with_error!(&e, GovernorError::InvalidProposalSupportError),
+        }
+
+        storage::set_voter_status(&e, &voter, &proposal_id, &support);
+        storage::set_proposal_vote_count(&e, &proposal_id, &vote_count);
     }
 
     fn get_vote(e: Env, voter: Address, proposal_id: u32) -> Option<u32> {

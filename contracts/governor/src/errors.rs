@@ -15,4 +15,8 @@ pub enum GovernorError {
     AllowanceError = 9,
     BalanceError = 10,
     OverflowError = 12,
+
+    NonExistentProposalError = 13,
+    ProposalNotActiveError = 14,
+    InvalidProposalSupportError = 15,
 }
