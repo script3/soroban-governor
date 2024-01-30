@@ -1,5 +1,3 @@
-use core::f32::consts::E;
-
 use soroban_sdk::{
     contracttype, unwrap::UnwrapOptimized, Address, Env, IntoVal, String, Symbol, TryFromVal, Val,
     Vec,

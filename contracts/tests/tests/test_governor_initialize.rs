@@ -3,8 +3,7 @@ use soroban_governor::{
     storage::{self, GovernorSettings},
     GovernorContract, GovernorContractClient,
 };
-use soroban_sdk::testutils::Address as _;
-use soroban_sdk::{Address, Env};
+use soroban_sdk::{testutils::Address as _, Address, Env};
 use tests::common::create_govenor;
 #[test]
 fn test_initialize_sets_storage() {

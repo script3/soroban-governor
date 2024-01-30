@@ -3,9 +3,7 @@ use soroban_governor::{
     dependencies::{VotesClient, VOTES_WASM},
     storage::{self, Calldata, ProposalStatus, SubCalldata},
 };
-use soroban_sdk::testutils::Address as _;
-use soroban_sdk::{vec, Address, IntoVal, String};
-use soroban_sdk::{Env, Symbol};
+use soroban_sdk::{testutils::Address as _, vec, Address, Env, IntoVal, String, Symbol};
 use tests::common::create_govenor;
 #[test]
 fn test_propose() {
