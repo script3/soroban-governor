@@ -12,13 +12,13 @@ pub fn create_govenor<'a>(
     let govenor: GovernorContractClient<'a> = GovernorContractClient::new(&e, &address);
     let votes = Address::generate(&e);
     let settings = GovernorSettings {
-        proposal_threshold: 1000,
-        vote_delay: 2000,
-        vote_period: 3000,
-        timelock: 4000,
-        quorum: 5000,
-        counting_type: 6000,
-        vote_threshold: 7000,
+        proposal_threshold: 10_000_000,
+        vote_delay: 60 * 60 * 24,
+        vote_period: 60 * 60 * 24 * 7,
+        timelock: 60 * 60 * 24,
+        quorum: 80,
+        counting_type: 5,
+        vote_threshold: 51,
     };
     govenor.initialize(&votes, &settings);
     return (address, votes, settings, govenor);

@@ -17,7 +17,7 @@ fn test_vote() {
     let creater = Address::generate(&e);
     let voter = Address::generate(&e);
 
-    votes_client.set_votes(&creater, &1000_i128);
+    votes_client.set_votes(&creater, &10_000_000_i128);
     votes_client.set_past_votes(&voter, &0, &1000_i128);
     let calldata = Calldata {
         contract_id: Address::generate(&e),

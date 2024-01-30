@@ -15,7 +15,7 @@ fn test_propose() {
     let votes_client = VotesClient::new(&e, &votes_address);
     let creater = Address::generate(&e);
 
-    votes_client.set_votes(&creater, &1000_i128);
+    votes_client.set_votes(&creater, &10_000_000_i128);
     let calldata = Calldata {
         contract_id: Address::generate(&e),
         function: Symbol::new(&e, "test"),
