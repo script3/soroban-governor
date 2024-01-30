@@ -1,0 +1,13 @@
+[package]
+name = "tests"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+soroban-sdk = { workspace = true }
+sep-41-token = { workspace = true }
+soroban-governor = {path = "../governor", features = ["testutils"]}
+[dev_dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }

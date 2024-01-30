@@ -1,12 +1,5 @@
-#![cfg(test)]
-use crate::contract::{GovernorContract, GovernorContractClient};
-use crate::storage::GovernorSettings;
-use soroban_sdk::testutils::Address as _;
-use soroban_sdk::Address;
-use soroban_sdk::Env;
-
-/// Creates and initializes a Governor contract
-/// Returns governor_address, voter_address, governor settings, and governor client
+use soroban_governor::{storage::GovernorSettings, GovernorContract, GovernorContractClient};
+use soroban_sdk::{testutils::Address as _, Address, Env};
 pub fn create_govenor<'a>(
     e: &Env,
 ) -> (
