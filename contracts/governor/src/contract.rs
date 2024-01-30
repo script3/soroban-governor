@@ -1,5 +1,8 @@
 use soroban_sdk::{
-    contract, contractimpl, panic_with_error, unwrap::UnwrapOptimized, Address, Env, String, Vec,
+    auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation},
+    contract, contractimpl, panic_with_error,
+    unwrap::UnwrapOptimized,
+    vec, Address, Env, String, Vec,
 };
 
 use crate::dependencies::VotesClient;
@@ -106,7 +109,40 @@ impl Governor for GovernorContract {
     }
 
     fn execute(e: Env, proposal_id: u32) {
-        todo!()
+        let proposal = storage::get_proposal(&e, &proposal_id);
+        if proposal.is_none() {
+            panic_with_error!(&e, GovernorError::NonExistentProposalError);
+        }
+
+        let proposal = proposal.unwrap();
+        let status = storage::get_proposal_status(&e, &proposal_id);
+        let settings = storage::get_settings(&e);
+        if status != ProposalStatus::Queued {
+            panic_with_error!(&e, GovernorError::ProposalNotQueuedError);
+        }
+        if e.ledger().timestamp() < proposal.vote_end + settings.timelock {
+            panic_with_error!(&e, GovernorError::TimelockNotMetError);
+        }
+
+        let mut pre_auth_vec: Vec<InvokerContractAuthEntry> = vec![&e];
+        for call_data in proposal.sub_calldata {
+            let pre_auth_entry = InvokerContractAuthEntry::Contract(SubContractInvocation {
+                context: ContractContext {
+                    contract: call_data.contract_id,
+                    fn_name: call_data.function,
+                    args: call_data.args,
+                },
+                sub_invocations: vec![&e],
+            });
+            pre_auth_vec.push_back(pre_auth_entry);
+        }
+        e.authorize_as_current_contract(pre_auth_vec);
+        let _: () = e.invoke_contract(
+            &proposal.calldata.contract_id,
+            &proposal.calldata.function,
+            proposal.calldata.args,
+        );
+        storage::set_proposal_status(&e, &proposal_id, &ProposalStatus::Succeeded);
     }
 
     fn cancel(e: Env, creator: Address, proposal_id: u32) {

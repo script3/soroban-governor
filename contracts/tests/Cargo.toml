@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 soroban-sdk = { workspace = true }
-sep-41-token = { workspace = true }
+sep-41-token = { workspace = true, features = ["testutils"] }
 soroban-governor = {path = "../governor", features = ["testutils"]}
 [dev_dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
