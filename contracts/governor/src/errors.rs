@@ -22,4 +22,5 @@ pub enum GovernorError {
     VotePeriodNotFinishedError = 16,
     ProposalNotQueuedError = 17,
     TimelockNotMetError = 18,
+    CancelActiveProposalError = 19,
 }

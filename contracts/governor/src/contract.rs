@@ -146,7 +146,16 @@ impl Governor for GovernorContract {
     }
 
     fn cancel(e: Env, creator: Address, proposal_id: u32) {
-        todo!()
+        creator.require_auth();
+        let proposal = storage::get_proposal(&e, &proposal_id);
+        if proposal.is_none() {
+            panic_with_error!(&e, GovernorError::NonExistentProposalError);
+        }
+        let proposal_status = storage::get_proposal_status(&e, &proposal_id);
+        if proposal_status != ProposalStatus::Pending {
+            panic_with_error!(&e, GovernorError::CancelActiveProposalError);
+        }
+        storage::set_proposal_status(&e, &proposal_id, &ProposalStatus::Expired);
     }
 
     fn vote(e: Env, voter: Address, proposal_id: u32, support: u32) {
@@ -195,6 +204,6 @@ impl Governor for GovernorContract {
     }
 
     fn get_vote(e: Env, voter: Address, proposal_id: u32) -> Option<u32> {
-        todo!()
+        storage::get_voter_status(&e, &voter, &proposal_id)
     }
 }
