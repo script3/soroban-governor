@@ -7,8 +7,8 @@ const VOTER_TOKEN_ADDRESS_KEY: &str = "Votes";
 const SETTINGS_KEY: &str = "Settings";
 const IS_INIT_KEY: &str = "IsInit";
 const PROPOSAL_ID_KEY: &str = "ProposalId";
-pub(crate) const LEDGER_THRESHOLD_SHARED: u32 = 172800; // ~ 10 days
-pub(crate) const LEDGER_BUMP_SHARED: u32 = 241920; // ~ 14 days
+pub(crate) const LEDGER_THRESHOLD_SHARED: u32 = 518400; // ~ 10 days
+pub(crate) const LEDGER_BUMP_SHARED: u32 = 535680; // ~ 14 days
 pub(crate) const MAX_VOTE_PERIOD: u64 = 1814400; // ~ 21 days represented in seconds
 
 /// The governor settings for managing proposals
