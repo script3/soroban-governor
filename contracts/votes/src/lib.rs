@@ -3,6 +3,15 @@
 #[cfg(any(test, feature = "testutils"))]
 extern crate std;
 
+mod allowance;
+mod balance;
+mod checkpoints;
 mod contract;
-mod errors;
+mod error;
+mod events;
+mod storage;
+mod validation;
 mod votes;
+mod voting_units;
+
+pub use contract::*;
