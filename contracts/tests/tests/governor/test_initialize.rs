@@ -36,7 +36,7 @@ fn test_initalize_already_initalized() {
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #2)")]
+#[should_panic(expected = "Error(Contract, #200)")]
 fn test_initalize_proprosal_exceeds_time_length() {
     let e = Env::default();
     let address = e.register_contract(None, GovernorContract {});

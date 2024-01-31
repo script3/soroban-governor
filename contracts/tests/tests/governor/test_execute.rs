@@ -79,7 +79,7 @@ fn test_execute() {
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #13)")]
+#[should_panic(expected = "Error(Contract, #201)")]
 fn test_execute_nonexistent_proposal() {
     let e = Env::default();
     let (govenor_address, votes_address, _, govenor) = create_govenor(&e);
@@ -95,7 +95,7 @@ fn test_execute_nonexistent_proposal() {
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #17)")]
+#[should_panic(expected = "Error(Contract, #205)")]
 fn test_execute_proposal_not_queued() {
     let e = Env::default();
     e.mock_all_auths();
@@ -156,7 +156,7 @@ fn test_execute_proposal_not_queued() {
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #18)")]
+#[should_panic(expected = "Error(Contract, #206)")]
 fn test_execute_timelock_not_met() {
     let e = Env::default();
     e.mock_all_auths();

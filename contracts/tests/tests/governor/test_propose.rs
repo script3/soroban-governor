@@ -71,7 +71,7 @@ fn test_propose() {
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #10)")]
+#[should_panic(expected = "Error(Contract, #208)")]
 fn test_propose_below_proposal_threshold() {
     let e = Env::default();
     let (_, votes_address, _, govenor) = create_govenor(&e);

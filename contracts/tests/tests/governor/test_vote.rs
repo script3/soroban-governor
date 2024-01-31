@@ -143,7 +143,7 @@ fn test_vote_user_changes_support() {
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #13)")]
+#[should_panic(expected = "Error(Contract, #201)")]
 fn test_vote_nonexistent_proposal() {
     let e = Env::default();
     let (govenor_address, votes_address, _, govenor) = create_govenor(&e);
@@ -161,7 +161,7 @@ fn test_vote_nonexistent_proposal() {
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #14)")]
+#[should_panic(expected = "Error(Contract, #202)")]
 fn test_vote_proposal_not_active() {
     let e = Env::default();
     let (govenor_address, votes_address, _, govenor) = create_govenor(&e);
@@ -210,7 +210,7 @@ fn test_vote_proposal_not_active() {
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #15)")]
+#[should_panic(expected = "Error(Contract, #203)")]
 fn test_vote_invalid_support_option() {
     let e = Env::default();
     let (govenor_address, votes_address, _, govenor) = create_govenor(&e);

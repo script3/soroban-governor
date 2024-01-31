@@ -62,7 +62,7 @@ fn test_cancel() {
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #13)")]
+#[should_panic(expected = "Error(Contract, #201)")]
 fn test_cancel_nonexistent_proposal() {
     let e = Env::default();
     let (govenor_address, votes_address, _, govenor) = create_govenor(&e);
@@ -79,7 +79,7 @@ fn test_cancel_nonexistent_proposal() {
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #19)")]
+#[should_panic(expected = "Error(Contract, #207)")]
 fn test_cancel_proposal_active() {
     let e = Env::default();
     let (govenor_address, votes_address, _, govenor) = create_govenor(&e);

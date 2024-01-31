@@ -2,7 +2,7 @@ use soroban_sdk::{
     auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation},
     contract, contractimpl, panic_with_error,
     unwrap::UnwrapOptimized,
-    vec, Address, Env, String, Vec,
+    vec, Address, Env, String, Val, Vec,
 };
 
 use crate::dependencies::VotesClient;
@@ -45,7 +45,7 @@ impl Governor for GovernorContract {
         let creater_votes =
             VotesClient::new(&e, &storage::get_voter_token_address(&e)).get_votes(&creator);
         if creater_votes < settings.proposal_threshold {
-            panic_with_error!(&e, GovernorError::BalanceError)
+            panic_with_error!(&e, GovernorError::InsifficientVotingUnitsError)
         }
 
         let proposal_id = storage::get_proposal_id(&e);
@@ -137,7 +137,7 @@ impl Governor for GovernorContract {
             pre_auth_vec.push_back(pre_auth_entry);
         }
         e.authorize_as_current_contract(pre_auth_vec);
-        let _: () = e.invoke_contract(
+        e.invoke_contract::<Val>(
             &proposal.calldata.contract_id,
             &proposal.calldata.function,
             proposal.calldata.args,

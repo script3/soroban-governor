@@ -6,7 +6,6 @@ use soroban_sdk::contracterror;
 pub enum GovernorError {
     // Default errors to align with built-in contract
     InternalError = 1,
-    InvalidSettingsError = 2,
     AlreadyInitializedError = 3,
 
     UnauthorizedError = 4,
@@ -16,11 +15,13 @@ pub enum GovernorError {
     BalanceError = 10,
     OverflowError = 12,
 
-    NonExistentProposalError = 13,
-    ProposalNotActiveError = 14,
-    InvalidProposalSupportError = 15,
-    VotePeriodNotFinishedError = 16,
-    ProposalNotQueuedError = 17,
-    TimelockNotMetError = 18,
-    CancelActiveProposalError = 19,
+    InvalidSettingsError = 200,
+    NonExistentProposalError = 201,
+    ProposalNotActiveError = 202,
+    InvalidProposalSupportError = 203,
+    VotePeriodNotFinishedError = 204,
+    ProposalNotQueuedError = 205,
+    TimelockNotMetError = 206,
+    CancelActiveProposalError = 207,
+    InsifficientVotingUnitsError = 208,
 }

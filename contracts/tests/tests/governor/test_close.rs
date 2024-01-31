@@ -222,7 +222,7 @@ fn test_close_quorum_vote_threshold_not_met() {
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #13)")]
+#[should_panic(expected = "Error(Contract, #201)")]
 fn test_close_nonexistent_proposal() {
     let e = Env::default();
     let (govenor_address, votes_address, _, govenor) = create_govenor(&e);
@@ -238,7 +238,7 @@ fn test_close_nonexistent_proposal() {
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #16)")]
+#[should_panic(expected = "Error(Contract, #204)")]
 fn test_close_vote_period_unfinished() {
     let e = Env::default();
     let (govenor_address, votes_address, _, govenor) = create_govenor(&e);
