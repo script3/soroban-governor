@@ -3,8 +3,9 @@ resolver = "2"
 
 members = [ 
     "contracts/governor",
-    "contracts/votes"
-]
+    "contracts/votes",
+    "contracts/mock-vote", 
+    "contracts/tests"]
 
 [profile.release-with-logs]
 inherits = "release"

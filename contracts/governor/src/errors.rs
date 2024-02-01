@@ -14,4 +14,14 @@ pub enum GovernorError {
     AllowanceError = 9,
     BalanceError = 10,
     OverflowError = 12,
+
+    InvalidSettingsError = 200,
+    NonExistentProposalError = 201,
+    ProposalNotActiveError = 202,
+    InvalidProposalSupportError = 203,
+    VotePeriodNotFinishedError = 204,
+    ProposalNotQueuedError = 205,
+    TimelockNotMetError = 206,
+    CancelActiveProposalError = 207,
+    InsifficientVotingUnitsError = 208,
 }

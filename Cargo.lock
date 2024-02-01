@@ -641,6 +641,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "mock-vote"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+]
+
+[[package]]
 name = "num-bigint"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1207,6 +1214,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "tests"
+version = "0.1.0"
+dependencies = [
+ "sep-41-token",
+ "soroban-governor",
+ "soroban-sdk",
 ]
 
 [[package]]
