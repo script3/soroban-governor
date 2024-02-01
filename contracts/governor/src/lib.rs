@@ -3,6 +3,7 @@
 #[cfg(any(test, feature = "testutils"))]
 extern crate std;
 
+pub mod constants;
 pub mod contract;
 pub mod errors;
 pub mod governor;

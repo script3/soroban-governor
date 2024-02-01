@@ -5,12 +5,10 @@ use soroban_sdk::{
     vec, Address, Env, String, Val, Vec,
 };
 
-use crate::dependencies::VotesClient;
 use crate::errors::GovernorError;
 use crate::governor::Governor;
-use crate::storage::{
-    self, Calldata, GovernorSettings, Proposal, ProposalStatus, SubCalldata, MAX_VOTE_PERIOD,
-};
+use crate::storage::{self, Calldata, GovernorSettings, Proposal, ProposalStatus, SubCalldata};
+use crate::{constants::MAX_VOTE_PERIOD, dependencies::VotesClient};
 #[contract]
 pub struct GovernorContract;
 
@@ -27,6 +25,7 @@ impl Governor for GovernorContract {
         storage::set_voter_token_address(&e, &votes);
         storage::set_settings(&e, &settings);
         storage::set_is_init(&e);
+        storage::extend_instance(&e);
     }
 
     fn settings(e: Env) -> GovernorSettings {
@@ -41,6 +40,9 @@ impl Governor for GovernorContract {
         title: String,
         description: String,
     ) -> u32 {
+        creator.require_auth();
+        storage::extend_instance(&e);
+
         let settings = storage::get_settings(&e);
         let creater_votes =
             VotesClient::new(&e, &storage::get_voter_token_address(&e)).get_votes(&creator);
@@ -71,6 +73,7 @@ impl Governor for GovernorContract {
     }
 
     fn close(e: Env, proposal_id: u32) {
+        storage::extend_instance(&e);
         let proposal = storage::get_proposal(&e, &proposal_id);
         if proposal.is_none() {
             panic_with_error!(&e, GovernorError::NonExistentProposalError);
@@ -109,6 +112,7 @@ impl Governor for GovernorContract {
     }
 
     fn execute(e: Env, proposal_id: u32) {
+        storage::extend_instance(&e);
         let proposal = storage::get_proposal(&e, &proposal_id);
         if proposal.is_none() {
             panic_with_error!(&e, GovernorError::NonExistentProposalError);
@@ -147,6 +151,7 @@ impl Governor for GovernorContract {
 
     fn cancel(e: Env, creator: Address, proposal_id: u32) {
         creator.require_auth();
+        storage::extend_instance(&e);
         let proposal = storage::get_proposal(&e, &proposal_id);
         if proposal.is_none() {
             panic_with_error!(&e, GovernorError::NonExistentProposalError);
@@ -160,6 +165,7 @@ impl Governor for GovernorContract {
 
     fn vote(e: Env, voter: Address, proposal_id: u32, support: u32) {
         voter.require_auth();
+        storage::extend_instance(&e);
         let proposal = storage::get_proposal(&e, &proposal_id);
         if proposal.is_none() {
             panic_with_error!(&e, GovernorError::NonExistentProposalError);
