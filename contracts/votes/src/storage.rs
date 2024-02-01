@@ -15,8 +15,8 @@ pub(crate) const BALANCE_LIFETIME_THRESHOLD: u32 = BALANCE_BUMP_AMOUNT - DAY_IN_
 const IS_INIT_KEY: Symbol = symbol_short!("IsInit");
 const TOKEN_KEY: Symbol = symbol_short!("TOKEN");
 const METADATA_KEY: Symbol = symbol_short!("METADATA");
-const TOTAL_SUPPLY_KEY: Symbol = symbol_short!("T_SUPPLY");
-const TOTAL_SUPPLY_CHECK_KEY: Symbol = symbol_short!("T_S_CHECK");
+const TOTAL_SUPPLY_KEY: Symbol = symbol_short!("SUPPLY");
+const TOTAL_SUPPLY_CHECK_KEY: Symbol = symbol_short!("SPLYCHECK");
 
 #[derive(Clone)]
 #[contracttype]
@@ -184,7 +184,7 @@ pub fn set_balance(e: &Env, address: &Address, balance: &i128) {
 pub fn get_voting_units(e: &Env, address: &Address) -> VotingUnits {
     get_persistent_default(
         e,
-        &DataKey::Balance(address.clone()),
+        &DataKey::Votes(address.clone()),
         || VotingUnits {
             amount: 0,
             timestamp: 0,
@@ -197,7 +197,7 @@ pub fn get_voting_units(e: &Env, address: &Address) -> VotingUnits {
 pub fn set_voting_units(e: &Env, address: &Address, balance: &VotingUnits) {
     e.storage()
         .persistent()
-        .set(&DataKey::Balance(address.clone()), balance);
+        .set(&DataKey::Votes(address.clone()), balance);
 }
 
 // Delegate
@@ -290,6 +290,6 @@ pub fn get_voting_units_checkpoints(e: &Env, address: &Address) -> Vec<VotingUni
 
 pub fn set_voting_units_checkpoints(e: &Env, address: &Address, balance: &Vec<VotingUnits>) {
     e.storage()
-        .persistent()
+        .temporary()
         .set(&DataKey::VotesCheck(address.clone()), balance);
 }

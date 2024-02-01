@@ -1,6 +1,9 @@
 use sep_41_token::testutils::{MockTokenClient, MockTokenWASM};
 use soroban_governor::{storage::GovernorSettings, GovernorContract, GovernorContractClient};
 use soroban_sdk::{testutils::Address as _, Address, Env, IntoVal};
+use soroban_votes::{TokenVotes, TokenVotesClient};
+
+//********** Governor **********//
 
 pub fn create_govenor<'a>(
     e: &Env,
@@ -25,6 +28,21 @@ pub fn create_govenor<'a>(
     govenor.initialize(&votes, &settings);
     return (address, votes, settings, govenor);
 }
+
+//********** Votes **********//
+
+/// Create a voting token for an underyling token
+///
+/// ### Arguments
+/// * `token` - The underlying token address
+pub fn create_token_votes<'a>(e: &Env, token: &Address) -> (Address, TokenVotesClient<'a>) {
+    let vote_token_id = e.register_contract(None, TokenVotes {});
+    let vote_token_client = TokenVotesClient::new(e, &vote_token_id);
+    vote_token_client.initialize(&token);
+    (vote_token_id, vote_token_client)
+}
+
+//********** Token **********//
 
 pub fn create_stellar_token<'a>(e: &Env, admin: &Address) -> (Address, MockTokenClient<'a>) {
     let contract_id = e.register_stellar_asset_contract(admin.clone());

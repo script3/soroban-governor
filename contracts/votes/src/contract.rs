@@ -149,6 +149,10 @@ impl Votes for TokenVotes {
 
     fn get_past_total_supply(e: Env, timestamp: u64) -> i128 {
         storage::extend_instance(&e);
+        let cur_supply = storage::get_total_supply(&e);
+        if cur_supply.timestamp <= timestamp {
+            return cur_supply.amount;
+        }
         let supply_checkpoints = storage::get_total_supply_checkpoints(&e);
         let past_voting_units = upper_lookup(&supply_checkpoints, timestamp);
         match past_voting_units {
@@ -164,6 +168,10 @@ impl Votes for TokenVotes {
 
     fn get_past_votes(e: Env, user: Address, timestamp: u64) -> i128 {
         storage::extend_instance(&e);
+        let cur_votes = storage::get_voting_units(&e, &user);
+        if cur_votes.timestamp <= timestamp {
+            return cur_votes.amount;
+        }
         let checkpoints = storage::get_voting_units_checkpoints(&e, &user);
         let past_voting_units = upper_lookup(&checkpoints, timestamp);
         match past_voting_units {
@@ -178,6 +186,7 @@ impl Votes for TokenVotes {
     }
 
     fn delegate(e: Env, account: Address, delegatee: Address) {
+        account.require_auth();
         storage::extend_instance(&e);
         let cur_delegate = storage::get_delegate(&e, &account);
         if cur_delegate == delegatee {
@@ -194,6 +203,7 @@ impl Votes for TokenVotes {
     }
 
     fn deposit_for(e: Env, from: Address, amount: i128) {
+        from.require_auth();
         storage::extend_instance(&e);
 
         let token = TokenClient::new(&e, &storage::get_token(&e));
@@ -202,12 +212,11 @@ impl Votes for TokenVotes {
         receive_balance(&e, &from, amount);
         mint_voting_units(&e, &from, amount);
 
-        // TODO: emit both?
-        TokenEvents::mint(&e, from.clone(), from.clone(), amount);
         VoterTokenEvents::deposit(&e, from, amount);
     }
 
     fn withdraw_to(e: Env, from: Address, amount: i128) {
+        from.require_auth();
         storage::extend_instance(&e);
 
         spend_balance(&e, &from, amount);
@@ -216,8 +225,6 @@ impl Votes for TokenVotes {
         let token = TokenClient::new(&e, &storage::get_token(&e));
         token.transfer(&e.current_contract_address(), &from, &amount);
 
-        // TODO: emit both?
-        TokenEvents::burn(&e, from.clone(), amount);
         VoterTokenEvents::withdraw(&e, from, amount);
     }
 }
