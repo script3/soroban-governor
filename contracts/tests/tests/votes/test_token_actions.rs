@@ -2,7 +2,7 @@ use soroban_sdk::symbol_short;
 #[cfg(test)]
 use soroban_sdk::{
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation},
-    Address, Env, IntoVal, Symbol
+    Address, Env, IntoVal, Symbol,
 };
 use tests::{
     common::{create_stellar_token, create_token_votes},

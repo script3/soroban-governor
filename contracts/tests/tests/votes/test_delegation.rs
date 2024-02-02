@@ -1,7 +1,7 @@
 #[cfg(test)]
 use soroban_sdk::{
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, Events},
-    vec, Address, Env, IntoVal, Symbol, Val, Error
+    vec, Address, Env, Error, IntoVal, Symbol, Val,
 };
 use tests::{
     common::{create_stellar_token, create_token_votes},
@@ -56,9 +56,15 @@ fn test_delegation() {
     assert_eq!(votes_client.get_delegate(&frodo), frodo);
     assert_eq!(votes_client.balance(&samwise), deposit_amount_samwise);
     assert_eq!(votes_client.balance(&frodo), deposit_amount_frodo);
-    assert_eq!(votes_client.total_supply(), deposit_amount_samwise + deposit_amount_frodo);
+    assert_eq!(
+        votes_client.total_supply(),
+        deposit_amount_samwise + deposit_amount_frodo
+    );
     assert_eq!(votes_client.get_votes(&samwise), 0);
-    assert_eq!(votes_client.get_votes(&frodo), deposit_amount_samwise + deposit_amount_frodo);
+    assert_eq!(
+        votes_client.get_votes(&frodo),
+        deposit_amount_samwise + deposit_amount_frodo
+    );
     assert_eq!(
         votes_client.get_past_votes(&samwise, &(e.ledger().timestamp() - 1)),
         deposit_amount_samwise
@@ -75,15 +81,21 @@ fn test_delegation() {
         token_client.balance(&frodo),
         initial_balance - deposit_amount_frodo
     );
-    assert_eq!(token_client.balance(&votes_id), deposit_amount_samwise + deposit_amount_frodo);
+    assert_eq!(
+        token_client.balance(&votes_id),
+        deposit_amount_samwise + deposit_amount_frodo
+    );
 
     // validate events
     let events = e.events().all();
     let tx_events = events.slice((events.len() - 3)..(events.len()));
     let event_data_0: soroban_sdk::Vec<Val> =
         vec![&e, deposit_amount_samwise.into_val(&e), 0i128.into_val(&e)];
-    let event_data_1: soroban_sdk::Vec<Val> =
-        vec![&e, deposit_amount_frodo.into_val(&e), (deposit_amount_frodo + deposit_amount_samwise).into_val(&e)];
+    let event_data_1: soroban_sdk::Vec<Val> = vec![
+        &e,
+        deposit_amount_frodo.into_val(&e),
+        (deposit_amount_frodo + deposit_amount_samwise).into_val(&e),
+    ];
     assert_eq!(
         tx_events,
         vec![
@@ -146,7 +158,10 @@ fn test_delegation_chain_only_delegates_balance() {
     assert_eq!(votes_client.balance(&pippin), deposit_amount_pippen);
     assert_eq!(votes_client.balance(&samwise), deposit_amount_samwise);
     assert_eq!(votes_client.get_votes(&pippin), 0);
-    assert_eq!(votes_client.get_votes(&samwise), deposit_amount_samwise + deposit_amount_pippen);
+    assert_eq!(
+        votes_client.get_votes(&samwise),
+        deposit_amount_samwise + deposit_amount_pippen
+    );
 
     e.jump_with_sequence(100);
 
@@ -159,7 +174,10 @@ fn test_delegation_chain_only_delegates_balance() {
     assert_eq!(votes_client.balance(&frodo), deposit_amount_frodo);
     assert_eq!(votes_client.get_votes(&pippin), 0);
     assert_eq!(votes_client.get_votes(&samwise), deposit_amount_pippen);
-    assert_eq!(votes_client.get_votes(&frodo), deposit_amount_samwise + deposit_amount_frodo);
+    assert_eq!(
+        votes_client.get_votes(&frodo),
+        deposit_amount_samwise + deposit_amount_frodo
+    );
 
     e.jump_with_sequence(100);
 
@@ -167,11 +185,20 @@ fn test_delegation_chain_only_delegates_balance() {
     let transfer_amount = 10 * 10i128.pow(7);
     votes_client.transfer(&pippin, &merry, &transfer_amount);
 
-    assert_eq!(votes_client.balance(&pippin), deposit_amount_pippen - transfer_amount);
+    assert_eq!(
+        votes_client.balance(&pippin),
+        deposit_amount_pippen - transfer_amount
+    );
     assert_eq!(votes_client.balance(&merry), transfer_amount);
     assert_eq!(votes_client.get_votes(&pippin), 0);
-    assert_eq!(votes_client.get_votes(&samwise), deposit_amount_pippen - transfer_amount);
-    assert_eq!(votes_client.get_votes(&frodo), deposit_amount_samwise + deposit_amount_frodo);
+    assert_eq!(
+        votes_client.get_votes(&samwise),
+        deposit_amount_pippen - transfer_amount
+    );
+    assert_eq!(
+        votes_client.get_votes(&frodo),
+        deposit_amount_samwise + deposit_amount_frodo
+    );
     assert_eq!(votes_client.get_votes(&merry), transfer_amount);
 
     // verify checkpoints for pippin
@@ -247,8 +274,5 @@ fn test_delegation_to_current_delegate() {
     assert_eq!(votes_client.get_delegate(&samwise), frodo);
 
     let result = votes_client.try_delegate(&samwise, &frodo);
-    assert_eq!(
-        result.err(),
-        Some(Ok(Error::from_contract_error(101)))
-    );
+    assert_eq!(result.err(), Some(Ok(Error::from_contract_error(101))));
 }

@@ -273,7 +273,7 @@ pub fn get_total_supply_checkpoints(e: &Env) -> Vec<VotingUnits> {
 
 pub fn set_total_supply_checkpoints(e: &Env, balance: &Vec<VotingUnits>) {
     e.storage()
-        .persistent()
+        .temporary()
         .set(&TOTAL_SUPPLY_CHECK_KEY, balance);
 }
 
