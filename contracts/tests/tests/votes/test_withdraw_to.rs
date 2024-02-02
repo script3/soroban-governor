@@ -48,9 +48,18 @@ fn test_withdraw_to() {
     );
 
     // validate chain results
-    assert_eq!(votes_client.balance(&samwise), deposit_amount - withdraw_amount);
-    assert_eq!(votes_client.total_supply(), deposit_amount - withdraw_amount);
-    assert_eq!(votes_client.get_votes(&samwise), deposit_amount - withdraw_amount);
+    assert_eq!(
+        votes_client.balance(&samwise),
+        deposit_amount - withdraw_amount
+    );
+    assert_eq!(
+        votes_client.total_supply(),
+        deposit_amount - withdraw_amount
+    );
+    assert_eq!(
+        votes_client.get_votes(&samwise),
+        deposit_amount - withdraw_amount
+    );
     assert_eq!(
         votes_client.get_past_votes(&samwise, &(e.ledger().timestamp())),
         deposit_amount - withdraw_amount
@@ -63,13 +72,23 @@ fn test_withdraw_to() {
         token_client.balance(&samwise),
         initial_balance - deposit_amount + withdraw_amount
     );
-    assert_eq!(token_client.balance(&votes_id), deposit_amount - withdraw_amount);
+    assert_eq!(
+        token_client.balance(&votes_id),
+        deposit_amount - withdraw_amount
+    );
 
     // validate events
     let events = e.events().all();
-    let tx_events = vec![&e, events.get_unchecked(events.len() - 3), events.last().unwrap()];
-    let event_data_0: soroban_sdk::Vec<Val> =
-        vec![&e, deposit_amount.into_val(&e), (deposit_amount - withdraw_amount).into_val(&e)];
+    let tx_events = vec![
+        &e,
+        events.get_unchecked(events.len() - 3),
+        events.last().unwrap(),
+    ];
+    let event_data_0: soroban_sdk::Vec<Val> = vec![
+        &e,
+        deposit_amount.into_val(&e),
+        (deposit_amount - withdraw_amount).into_val(&e),
+    ];
     assert_eq!(
         tx_events,
         vec![
@@ -113,10 +132,7 @@ fn test_withdraw_to_full_balance() {
     assert_eq!(votes_client.balance(&samwise), 0);
     assert_eq!(votes_client.total_supply(), 0);
     assert_eq!(votes_client.get_votes(&samwise), 0);
-    assert_eq!(
-        token_client.balance(&samwise),
-        initial_balance
-    );
+    assert_eq!(token_client.balance(&samwise), initial_balance);
     assert_eq!(token_client.balance(&votes_id), 0);
 }
 

@@ -193,9 +193,9 @@ impl Votes for TokenVotes {
             panic_with_error!(e, TokenVotesError::InvalidDelegateeError);
         }
         let dest_delegate = storage::get_delegate(&e, &delegatee);
-        let voting_units = storage::get_voting_units(&e, &account).amount;
-        if voting_units > 0 {
-            move_voting_units(&e, Some(&cur_delegate), Some(&dest_delegate), voting_units);
+        let balance = storage::get_balance(&e, &account);
+        if balance > 0 {
+            move_voting_units(&e, Some(&cur_delegate), Some(&dest_delegate), balance);
         }
         set_delegate(&e, &account, &delegatee);
 
