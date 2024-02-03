@@ -4,7 +4,6 @@ resolver = "2"
 members = [ 
     "contracts/governor",
     "contracts/votes",
-    "contracts/mock-vote", 
     "contracts/tests"
 ]
 
