@@ -5,7 +5,8 @@ members = [
     "contracts/governor",
     "contracts/votes",
     "contracts/mock-vote", 
-    "contracts/tests"]
+    "contracts/tests"
+]
 
 [profile.release-with-logs]
 inherits = "release"

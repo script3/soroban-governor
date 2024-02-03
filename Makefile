@@ -11,10 +11,10 @@ build:
 	mkdir -p target/wasm32-unknown-unknown/optimized
 	soroban contract optimize \
 		--wasm target/wasm32-unknown-unknown/release/soroban_votes.wasm \
-		--wasm-out target/wasm32-unknown-unknown/optimized/votes.wasm
+		--wasm-out target/wasm32-unknown-unknown/optimized/soroban_votes.wasm
 	soroban contract optimize \
 		--wasm target/wasm32-unknown-unknown/release/soroban_governor.wasm \
-		--wasm-out target/wasm32-unknown-unknown/optimized/governor.wasm
+		--wasm-out target/wasm32-unknown-unknown/optimized/soroban_governor.wasm
 	cd target/wasm32-unknown-unknown/optimized/ && \
 		for i in *.wasm ; do \
 			ls -l "$$i"; \

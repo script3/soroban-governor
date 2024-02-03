@@ -7,18 +7,27 @@ pub trait Votes {
     /// * `token` - The address of the underlying token contract
     fn initialize(e: Env, token: Address);
 
+    /// Get the total supply of voting tokens
+    fn total_supply(e: Env) -> i128;
+
+    /// Get the total supply of voting tokens
+    ///
+    /// ### Arguments
+    /// * `timestamp` - The timestamp to get the total voting token supply at
+    fn get_past_total_supply(e: Env, timestamp: u64) -> i128;
+
     /// Get the current voting power of an account
     ///
     /// ### Arguments
     /// * `account` - The address of the account
     fn get_votes(e: Env, account: Address) -> i128;
 
-    /// Get the voting power of an account at a specific ledger sequence number
+    /// Get the voting power of an account at a specific timestamp
     ///
     /// ### Arguments
     /// * `account` - The address of the account
-    /// * `sequence` - The ledger sequence number to get the voting power at
-    fn get_past_votes(e: Env, user: Address, sequence: u32) -> i128;
+    /// * `timestamp` - The timestamp to get the voting power at
+    fn get_past_votes(e: Env, user: Address, timestamp: u64) -> i128;
 
     /// Get the deletage that account has chosen
     ///

@@ -1223,6 +1223,7 @@ dependencies = [
  "sep-41-token",
  "soroban-governor",
  "soroban-sdk",
+ "soroban-votes",
 ]
 
 [[package]]

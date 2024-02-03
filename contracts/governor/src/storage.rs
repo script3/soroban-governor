@@ -7,9 +7,37 @@ const VOTER_TOKEN_ADDRESS_KEY: &str = "Votes";
 const SETTINGS_KEY: &str = "Settings";
 const IS_INIT_KEY: &str = "IsInit";
 const PROPOSAL_ID_KEY: &str = "ProposalId";
-pub(crate) const LEDGER_THRESHOLD_SHARED: u32 = 518400; // ~ 10 days
-pub(crate) const LEDGER_BUMP_SHARED: u32 = 535680; // ~ 14 days
-pub(crate) const MAX_VOTE_PERIOD: u64 = 1814400; // ~ 21 days represented in seconds
+
+const ONE_DAY_LEDGERS: u32 = 17280; // assumes 5 seconds per ledger on average
+const LEDGER_THRESHOLD_SHARED: u32 = 14 * ONE_DAY_LEDGERS;
+const LEDGER_BUMP_SHARED: u32 = 15 * ONE_DAY_LEDGERS;
+const LEDGER_THRESHOLD_PROPOSAL: u32 = 30 * ONE_DAY_LEDGERS;
+const LEDGER_BUMP_PROPOSAL: u32 = 31 * ONE_DAY_LEDGERS; // ~ 14 days
+
+//********** Storage Keys **********//
+
+// Key for storing Voter's decision
+#[derive(Clone)]
+#[contracttype]
+pub struct VoterStatusKey {
+    pub proposal_id: u32,
+    pub voter: Address,
+}
+
+#[derive(Clone)]
+#[contracttype]
+pub enum GovernorDataKey {
+    // A map of proposal id to proposal
+    Proposal(u32),
+    // A map of underlying asset's contract address to reserve config
+    ProposalStatus(u32),
+    // The voter's decision
+    VoterStatus(VoterStatusKey),
+    // The proposal results
+    ProposalVotes(u32),
+}
+
+//********** Storage Types **********//
 
 /// The governor settings for managing proposals
 #[derive(Clone)]
@@ -35,6 +63,7 @@ pub struct GovernorSettings {
     /// The percentage of votes "yes" (expressed in BPS) needed to consider a vote successful.
     pub vote_threshold: u32,
 }
+
 /// Object for storing call data
 #[derive(Clone)]
 #[contracttype]
@@ -43,6 +72,7 @@ pub struct Calldata {
     pub function: Symbol,
     pub args: Vec<Val>,
 }
+
 /// Object for storing Pre-auth call data
 #[derive(Clone)]
 #[contracttype]
@@ -67,14 +97,6 @@ pub struct Proposal {
     pub vote_end: u64,
 }
 
-// Key for storing Voter's decision
-#[derive(Clone)]
-#[contracttype]
-pub struct VoterStatusKey {
-    pub proposal_id: u32,
-    pub voter: Address,
-}
-
 // Stores proposal results
 #[derive(Clone)]
 #[contracttype]
@@ -82,19 +104,6 @@ pub struct VoteCount {
     pub votes_for: i128,
     pub votes_against: i128,
     pub votes_abstained: i128,
-}
-
-#[derive(Clone)]
-#[contracttype]
-pub enum GovernorDataKey {
-    // A map of proposal id to proposal
-    Proposal(u32),
-    // A map of underlying asset's contract address to reserve config
-    ProposalStatus(u32),
-    // The voter's decision
-    VoterStatus(VoterStatusKey),
-    // The proposal results
-    ProposalVotes(u32),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -108,6 +117,15 @@ pub enum ProposalStatus {
     Queued = 4,
     Expired = 5,
     Executed = 6,
+}
+
+//********** Storage Utils **********//
+
+/// Bump the instance lifetime by the defined amount
+pub fn extend_instance(e: &Env) {
+    e.storage()
+        .instance()
+        .extend_ttl(LEDGER_THRESHOLD_SHARED, LEDGER_BUMP_SHARED);
 }
 
 /// Fetch an entry in persistent storage that has a default value if it doesn't exist
@@ -144,6 +162,7 @@ fn get_temporary_default<K: IntoVal<Env, Val>, V: TryFromVal<Env, Val>>(
         default
     }
 }
+
 /********** Init **********/
 
 /// Check if the contract has been initialized
@@ -195,6 +214,7 @@ pub fn get_settings(e: &Env) -> GovernorSettings {
 }
 
 /********** Proposal **********/
+
 /// Set the next proposal id
 ///
 /// ### Arguments
@@ -206,7 +226,7 @@ pub fn set_proposal_id(e: &Env, proposal_id: &u32) {
         .set::<Symbol, u32>(&key, &proposal_id);
     e.storage()
         .persistent()
-        .extend_ttl(&key, LEDGER_THRESHOLD_SHARED, LEDGER_BUMP_SHARED);
+        .extend_ttl(&key, LEDGER_THRESHOLD_PROPOSAL, LEDGER_BUMP_PROPOSAL);
 }
 
 /// Get the current proposal id
@@ -216,8 +236,8 @@ pub fn get_proposal_id(e: &Env) -> u32 {
         &e,
         &key,
         0_u32,
-        LEDGER_THRESHOLD_SHARED,
-        LEDGER_BUMP_SHARED,
+        LEDGER_THRESHOLD_PROPOSAL,
+        LEDGER_BUMP_PROPOSAL,
     )
 }
 
@@ -227,7 +247,13 @@ pub fn get_proposal_id(e: &Env) -> u32 {
 /// * `proposal_id` - The id of the proposal to fetch
 pub fn get_proposal(e: &Env, proposal_id: &u32) -> Option<Proposal> {
     let key = GovernorDataKey::Proposal(*proposal_id);
-    get_temporary_default(&e, &key, None, LEDGER_THRESHOLD_SHARED, LEDGER_BUMP_SHARED)
+    get_temporary_default(
+        &e,
+        &key,
+        None,
+        LEDGER_THRESHOLD_PROPOSAL,
+        LEDGER_BUMP_PROPOSAL,
+    )
 }
 
 /// Store proposal in vec of proposals
@@ -241,7 +267,7 @@ pub fn set_proposal(e: &Env, proposal_id: &u32, proposal: &Proposal) {
         .set::<GovernorDataKey, Proposal>(&key, proposal);
     e.storage()
         .temporary()
-        .extend_ttl(&key, LEDGER_THRESHOLD_SHARED, LEDGER_BUMP_SHARED);
+        .extend_ttl(&key, LEDGER_THRESHOLD_PROPOSAL, LEDGER_BUMP_PROPOSAL);
 }
 
 // Get the proposal status for proposal at `proposal_id`
@@ -254,8 +280,8 @@ pub fn get_proposal_status(e: &Env, proposal_id: &u32) -> ProposalStatus {
         &e,
         &key,
         ProposalStatus::Pending,
-        LEDGER_THRESHOLD_SHARED,
-        LEDGER_BUMP_SHARED,
+        LEDGER_THRESHOLD_PROPOSAL,
+        LEDGER_BUMP_PROPOSAL,
     )
 }
 
@@ -270,10 +296,11 @@ pub fn set_proposal_status(e: &Env, id: &u32, proposal_status: &ProposalStatus) 
         .set::<GovernorDataKey, ProposalStatus>(&key, &proposal_status);
     e.storage()
         .temporary()
-        .extend_ttl(&key, LEDGER_THRESHOLD_SHARED, LEDGER_BUMP_SHARED);
+        .extend_ttl(&key, LEDGER_THRESHOLD_PROPOSAL, LEDGER_BUMP_PROPOSAL);
 }
 
 /********** Vote **********/
+
 /// Set the voter status of `voter` for proposal at `proposal_id` to `status`
 ///
 /// ### Arguments
@@ -293,7 +320,7 @@ pub fn set_voter_status(e: &Env, voter: &Address, proposal_id: &u32, status: &u3
         .set::<GovernorDataKey, u32>(&key, &status);
     e.storage()
         .temporary()
-        .extend_ttl(&key, LEDGER_THRESHOLD_SHARED, LEDGER_BUMP_SHARED);
+        .extend_ttl(&key, LEDGER_THRESHOLD_PROPOSAL, LEDGER_BUMP_PROPOSAL);
 }
 
 /// Get the voter status of `voter` for proposal at `proposal_id`
@@ -306,7 +333,13 @@ pub fn get_voter_status(e: &Env, voter: &Address, proposal_id: &u32) -> Option<u
         voter: voter.clone(),
         proposal_id: *proposal_id,
     });
-    get_temporary_default(&e, &key, None, LEDGER_THRESHOLD_SHARED, LEDGER_BUMP_SHARED)
+    get_temporary_default(
+        &e,
+        &key,
+        None,
+        LEDGER_THRESHOLD_PROPOSAL,
+        LEDGER_BUMP_PROPOSAL,
+    )
 }
 
 /// Set the vote count of proposal at `proposal_id`
@@ -321,7 +354,7 @@ pub fn set_proposal_vote_count(e: &Env, proposal_id: &u32, count: &VoteCount) {
         .set::<GovernorDataKey, VoteCount>(&key, count);
     e.storage()
         .temporary()
-        .extend_ttl(&key, LEDGER_THRESHOLD_SHARED, LEDGER_BUMP_SHARED);
+        .extend_ttl(&key, LEDGER_THRESHOLD_PROPOSAL, LEDGER_BUMP_PROPOSAL);
 }
 
 /// Get the vote count of proposal at `proposal_id`
@@ -338,7 +371,7 @@ pub fn get_proposal_vote_count(e: &Env, proposal_id: &u32) -> VoteCount {
             votes_against: 0,
             votes_abstained: 0,
         },
-        LEDGER_THRESHOLD_SHARED,
-        LEDGER_BUMP_SHARED,
+        LEDGER_THRESHOLD_PROPOSAL,
+        LEDGER_BUMP_PROPOSAL,
     )
 }
