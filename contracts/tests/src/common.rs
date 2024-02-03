@@ -7,15 +7,11 @@ use soroban_votes::{TokenVotes, TokenVotesClient};
 
 pub fn create_govenor<'a>(
     e: &Env,
-) -> (
-    Address,
-    Address,
-    GovernorSettings,
-    GovernorContractClient<'a>,
-) {
-    let address = e.register_contract(None, GovernorContract {});
-    let govenor: GovernorContractClient<'a> = GovernorContractClient::new(&e, &address);
-    let votes = Address::generate(&e);
+    votes: &Address,
+) -> (Address, GovernorContractClient<'a>, GovernorSettings) {
+    let governor_address = e.register_contract(None, GovernorContract {});
+    let govenor_client: GovernorContractClient<'a> =
+        GovernorContractClient::new(&e, &governor_address);
     let settings = GovernorSettings {
         proposal_threshold: 10_000_000,
         vote_delay: 60 * 60 * 24,
@@ -25,8 +21,8 @@ pub fn create_govenor<'a>(
         counting_type: 5,
         vote_threshold: 51,
     };
-    govenor.initialize(&votes, &settings);
-    return (address, votes, settings, govenor);
+    govenor_client.initialize(&votes, &settings);
+    return (governor_address, govenor_client, settings);
 }
 
 //********** Votes **********//
