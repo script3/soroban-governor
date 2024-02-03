@@ -85,22 +85,23 @@ impl Governor for GovernorContract {
         }
 
         let settings = storage::get_settings(&e);
-        let total_vote_supply =
-            VotesClient::new(&e, &storage::get_voter_token_address(&e)).total_supply();
-        let mut quorum_votes: i128 = 0;
-        let proposal_results = storage::get_proposal_vote_count(&e, &proposal_id);
+        let votes_client = VotesClient::new(&e, &storage::get_voter_token_address(&e));
+        let total_vote_supply = votes_client.get_past_total_supply(&proposal.vote_start);
 
+        let mut quorum_votes: i128 = 0;
+        let vote_count = storage::get_proposal_vote_count(&e, &proposal_id);
         if settings.counting_type & 0x1 == 1 {
-            quorum_votes += proposal_results.votes_abstained;
+            quorum_votes += vote_count.votes_abstained;
         }
         if settings.counting_type >> 1 & 0x1 == 1 {
-            quorum_votes += proposal_results.votes_against;
+            quorum_votes += vote_count.votes_against;
         }
         if settings.counting_type >> 2 & 0x1 == 1 {
-            quorum_votes += proposal_results.votes_for;
+            quorum_votes += vote_count.votes_for;
         }
-        let votes_for_percent = proposal_results.votes_for * 100
-            / (proposal_results.votes_against + proposal_results.votes_for);
+
+        let votes_for_percent =
+            vote_count.votes_for * 100 / (vote_count.votes_against + vote_count.votes_for);
 
         if (quorum_votes * 100 / total_vote_supply) as u32 >= settings.quorum
             && votes_for_percent as u32 >= settings.vote_threshold
