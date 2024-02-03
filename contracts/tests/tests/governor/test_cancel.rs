@@ -1,20 +1,30 @@
 #[cfg(test)]
-use soroban_governor::{
-    dependencies::{VotesClient, VOTES_WASM},
-    storage::{self, Calldata, Proposal, ProposalStatus, SubCalldata},
+use soroban_governor::storage::{self, Calldata, Proposal, ProposalStatus, SubCalldata};
+use soroban_sdk::{
+    testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation},
+    vec, Address, Env, IntoVal, String, Symbol, TryIntoVal,
 };
-use soroban_sdk::{testutils::Address as _, vec, Address, Env, IntoVal, String, Symbol};
-use tests::common::create_govenor;
+use tests::{
+    common::{create_govenor, create_stellar_token, create_token_votes},
+    env::EnvTestUtils,
+};
 
 #[test]
 fn test_cancel() {
     let e = Env::default();
-    let (govenor_address, votes_address, _, govenor) = create_govenor(&e);
-    e.register_contract_wasm(&Some(votes_address.clone()), VOTES_WASM);
-    let votes_client = VotesClient::new(&e, &votes_address);
-    let creater = Address::generate(&e);
+    e.mock_all_auths();
+    e.set_default_info();
 
-    votes_client.set_votes(&creater, &10_000_000_i128);
+    let bombadil = Address::generate(&e);
+    let samwise = Address::generate(&e);
+    let (token_address, token_client) = create_stellar_token(&e, &bombadil);
+    let (votes_address, votes_client) = create_token_votes(&e, &token_address);
+    let (govenor_address, governor_client, settings) = create_govenor(&e, &votes_address);
+
+    let samwise_mint_amount: i128 = 10_000_000;
+    token_client.mint(&samwise, &samwise_mint_amount);
+    votes_client.deposit_for(&samwise, &samwise_mint_amount);
+
     let calldata = Calldata {
         contract_id: Address::generate(&e),
         function: Symbol::new(&e, "test"),
@@ -41,19 +51,32 @@ fn test_cancel() {
                 id: proposal_id,
                 title,
                 description,
-                proposer: creater.clone(),
+                proposer: samwise.clone(),
                 calldata,
                 sub_calldata,
-                vote_start: 0,
-                vote_end: 1000,
+                vote_start: e.ledger().timestamp(),
+                vote_end: e.ledger().timestamp() + settings.vote_period,
             },
         );
         storage::set_proposal_status(&e, &proposal_id, &ProposalStatus::Pending);
         return proposal_id;
     });
 
-    e.mock_all_auths();
-    govenor.cancel(&creater.clone(), &proposal_id);
+    governor_client.cancel(&samwise.clone(), &proposal_id);
+    assert_eq!(
+        e.auths()[0],
+        (
+            samwise.clone(),
+            AuthorizedInvocation {
+                function: AuthorizedFunction::Contract((
+                    govenor_address.clone(),
+                    Symbol::new(&e, "cancel"),
+                    vec![&e, samwise.to_val(), proposal_id.try_into_val(&e).unwrap()]
+                )),
+                sub_invocations: std::vec![]
+            }
+        )
+    );
     e.as_contract(&govenor_address, || {
         let proposal_id: u32 = storage::get_proposal_id(&e);
         let proposal_status = storage::get_proposal_status(&e, &proposal_id);
@@ -65,9 +88,17 @@ fn test_cancel() {
 #[should_panic(expected = "Error(Contract, #201)")]
 fn test_cancel_nonexistent_proposal() {
     let e = Env::default();
-    let (govenor_address, votes_address, _, govenor) = create_govenor(&e);
-    e.register_contract_wasm(&Some(votes_address.clone()), VOTES_WASM);
-    let creater = Address::generate(&e);
+    e.mock_all_auths();
+    e.set_default_info();
+    let bombadil = Address::generate(&e);
+    let samwise = Address::generate(&e);
+    let (token_address, token_client) = create_stellar_token(&e, &bombadil);
+    let (votes_address, votes_client) = create_token_votes(&e, &token_address);
+    let (govenor_address, governor_client, _) = create_govenor(&e, &votes_address);
+
+    let samwise_mint_amount: i128 = 10_000_000;
+    token_client.mint(&samwise, &samwise_mint_amount);
+    votes_client.deposit_for(&samwise, &samwise_mint_amount);
 
     let proposal_id = e.as_contract(&govenor_address, || {
         let proposal_id: u32 = storage::get_proposal_id(&e);
@@ -75,19 +106,25 @@ fn test_cancel_nonexistent_proposal() {
     });
 
     e.mock_all_auths();
-    govenor.cancel(&creater.clone(), &proposal_id);
+    governor_client.cancel(&samwise.clone(), &proposal_id);
 }
 
 #[test]
 #[should_panic(expected = "Error(Contract, #207)")]
 fn test_cancel_proposal_active() {
     let e = Env::default();
-    let (govenor_address, votes_address, _, govenor) = create_govenor(&e);
-    e.register_contract_wasm(&Some(votes_address.clone()), VOTES_WASM);
-    let votes_client = VotesClient::new(&e, &votes_address);
-    let creater = Address::generate(&e);
+    e.mock_all_auths();
 
-    votes_client.set_votes(&creater, &10_000_000_i128);
+    let bombadil = Address::generate(&e);
+    let samwise = Address::generate(&e);
+    let (token_address, token_client) = create_stellar_token(&e, &bombadil);
+    let (votes_address, votes_client) = create_token_votes(&e, &token_address);
+    let (govenor_address, governor_client, _) = create_govenor(&e, &votes_address);
+
+    let samwise_mint_amount: i128 = 10_000_000;
+    token_client.mint(&samwise, &samwise_mint_amount);
+    votes_client.deposit_for(&samwise, &samwise_mint_amount);
+
     let calldata = Calldata {
         contract_id: Address::generate(&e),
         function: Symbol::new(&e, "test"),
@@ -114,7 +151,7 @@ fn test_cancel_proposal_active() {
                 id: proposal_id,
                 title,
                 description,
-                proposer: creater.clone(),
+                proposer: samwise.clone(),
                 calldata,
                 sub_calldata,
                 vote_start: 0,
@@ -125,6 +162,5 @@ fn test_cancel_proposal_active() {
         return proposal_id;
     });
 
-    e.mock_all_auths();
-    govenor.cancel(&creater.clone(), &proposal_id);
+    governor_client.cancel(&samwise.clone(), &proposal_id);
 }

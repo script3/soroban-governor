@@ -1,23 +1,27 @@
 #[cfg(test)]
-use soroban_governor::{
-    dependencies::{VotesClient, VOTES_WASM},
-    storage::{self, Calldata, Proposal, ProposalStatus, SubCalldata, VoteCount},
+use soroban_governor::storage::{self, Calldata, Proposal, ProposalStatus, SubCalldata, VoteCount};
+use soroban_sdk::{testutils::Address as _, vec, Address, Env, IntoVal, String, Symbol};
+use tests::{
+    common::{create_govenor, create_stellar_token, create_token_votes},
+    env::EnvTestUtils,
 };
-use soroban_sdk::{
-    testutils::{Address as _, Ledger, LedgerInfo},
-    vec, Address, Env, IntoVal, String, Symbol,
-};
-use tests::common::create_govenor;
 
 #[test]
 fn test_close_proposal_queued() {
     let e = Env::default();
-    let (govenor_address, votes_address, _, govenor) = create_govenor(&e);
-    e.register_contract_wasm(&Some(votes_address.clone()), VOTES_WASM);
-    let votes_client = VotesClient::new(&e, &votes_address);
-    let creater = Address::generate(&e);
+    e.set_default_info();
+    e.mock_all_auths();
 
-    votes_client.set_votes(&creater, &10_000_000_i128);
+    let bombadil = Address::generate(&e);
+    let samwise = Address::generate(&e);
+    let (token_address, token_client) = create_stellar_token(&e, &bombadil);
+    let (votes_address, votes_client) = create_token_votes(&e, &token_address);
+    let (govenor_address, governor_client, settings) = create_govenor(&e, &votes_address);
+
+    let samwise_mint_amount: i128 = 10_000_000;
+    token_client.mint(&samwise, &samwise_mint_amount);
+    votes_client.deposit_for(&samwise, &samwise_mint_amount);
+
     let calldata = Calldata {
         contract_id: Address::generate(&e),
         function: Symbol::new(&e, "test"),
@@ -43,11 +47,11 @@ fn test_close_proposal_queued() {
                 id: proposal_id,
                 title,
                 description,
-                proposer: creater,
+                proposer: samwise,
                 calldata,
                 sub_calldata,
-                vote_start: 0,
-                vote_end: 1000,
+                vote_start: e.ledger().timestamp(),
+                vote_end: e.ledger().timestamp() + settings.vote_period,
             },
         );
         // Set proposal votes to ensure quorum is met
@@ -62,18 +66,9 @@ fn test_close_proposal_queued() {
         );
         return proposal_id;
     });
-    e.ledger().set(LedgerInfo {
-        timestamp: e.ledger().timestamp().saturating_add(1000),
-        protocol_version: 20,
-        sequence_number: e.ledger().sequence(),
-        network_id: Default::default(),
-        base_reserve: 10,
-        min_temp_entry_ttl: 999999,
-        min_persistent_entry_ttl: 999999,
-        max_entry_ttl: 9999999,
-    });
 
-    govenor.close(&proposal_id);
+    e.jump(settings.vote_period);
+    governor_client.close(&proposal_id);
     e.as_contract(&govenor_address, || {
         let proposal_status = storage::get_proposal_status(&e, &proposal_id);
         assert_eq!(proposal_status, ProposalStatus::Queued);
@@ -82,12 +77,19 @@ fn test_close_proposal_queued() {
 #[test]
 fn test_close_quorum_not_met() {
     let e = Env::default();
-    let (govenor_address, votes_address, _, govenor) = create_govenor(&e);
-    e.register_contract_wasm(&Some(votes_address.clone()), VOTES_WASM);
-    let votes_client = VotesClient::new(&e, &votes_address);
-    let creater = Address::generate(&e);
+    e.set_default_info();
+    e.mock_all_auths();
 
-    votes_client.set_votes(&creater, &10_000_000_i128);
+    let bombadil = Address::generate(&e);
+    let samwise = Address::generate(&e);
+    let (token_address, token_client) = create_stellar_token(&e, &bombadil);
+    let (votes_address, votes_client) = create_token_votes(&e, &token_address);
+    let (govenor_address, governor_client, settings) = create_govenor(&e, &votes_address);
+
+    let samwise_mint_amount: i128 = 10_000_000;
+    token_client.mint(&samwise, &samwise_mint_amount);
+    votes_client.deposit_for(&samwise, &samwise_mint_amount);
+
     let calldata = Calldata {
         contract_id: Address::generate(&e),
         function: Symbol::new(&e, "test"),
@@ -113,11 +115,11 @@ fn test_close_quorum_not_met() {
                 id: proposal_id,
                 title,
                 description,
-                proposer: creater,
+                proposer: samwise,
                 calldata,
                 sub_calldata,
-                vote_start: 0,
-                vote_end: 1000,
+                vote_start: e.ledger().timestamp(),
+                vote_end: e.ledger().timestamp() + settings.vote_period,
             },
         );
         // Set proposal votes to ensure quorum is met
@@ -132,18 +134,9 @@ fn test_close_quorum_not_met() {
         );
         return proposal_id;
     });
-    e.ledger().set(LedgerInfo {
-        timestamp: e.ledger().timestamp().saturating_add(1000),
-        protocol_version: 20,
-        sequence_number: e.ledger().sequence(),
-        network_id: Default::default(),
-        base_reserve: 10,
-        min_temp_entry_ttl: 999999,
-        min_persistent_entry_ttl: 999999,
-        max_entry_ttl: 9999999,
-    });
 
-    govenor.close(&proposal_id);
+    e.jump(settings.vote_period);
+    governor_client.close(&proposal_id);
     e.as_contract(&govenor_address, || {
         let proposal_status = storage::get_proposal_status(&e, &proposal_id);
         assert_eq!(proposal_status, ProposalStatus::Defeated);
@@ -153,12 +146,18 @@ fn test_close_quorum_not_met() {
 #[test]
 fn test_close_quorum_vote_threshold_not_met() {
     let e = Env::default();
-    let (govenor_address, votes_address, _, govenor) = create_govenor(&e);
-    e.register_contract_wasm(&Some(votes_address.clone()), VOTES_WASM);
-    let votes_client = VotesClient::new(&e, &votes_address);
-    let creater = Address::generate(&e);
+    e.mock_all_auths();
 
-    votes_client.set_votes(&creater, &10_000_000_i128);
+    let bombadil = Address::generate(&e);
+    let samwise = Address::generate(&e);
+    let (token_address, token_client) = create_stellar_token(&e, &bombadil);
+    let (votes_address, votes_client) = create_token_votes(&e, &token_address);
+    let (govenor_address, governor_client, settings) = create_govenor(&e, &votes_address);
+
+    let samwise_mint_amount: i128 = 10_000_000;
+    token_client.mint(&samwise, &samwise_mint_amount);
+    votes_client.deposit_for(&samwise, &samwise_mint_amount);
+
     let calldata = Calldata {
         contract_id: Address::generate(&e),
         function: Symbol::new(&e, "test"),
@@ -184,11 +183,11 @@ fn test_close_quorum_vote_threshold_not_met() {
                 id: proposal_id,
                 title,
                 description,
-                proposer: creater,
+                proposer: samwise,
                 calldata,
                 sub_calldata,
-                vote_start: 0,
-                vote_end: 1000,
+                vote_start: e.ledger().timestamp(),
+                vote_end: e.ledger().timestamp() + settings.vote_period,
             },
         );
         // Set proposal votes to ensure quorum is met
@@ -203,18 +202,9 @@ fn test_close_quorum_vote_threshold_not_met() {
         );
         return proposal_id;
     });
-    e.ledger().set(LedgerInfo {
-        timestamp: e.ledger().timestamp().saturating_add(1000),
-        protocol_version: 20,
-        sequence_number: e.ledger().sequence(),
-        network_id: Default::default(),
-        base_reserve: 10,
-        min_temp_entry_ttl: 999999,
-        min_persistent_entry_ttl: 999999,
-        max_entry_ttl: 9999999,
-    });
 
-    govenor.close(&proposal_id);
+    e.jump(settings.vote_period);
+    governor_client.close(&proposal_id);
     e.as_contract(&govenor_address, || {
         let proposal_status = storage::get_proposal_status(&e, &proposal_id);
         assert_eq!(proposal_status, ProposalStatus::Defeated);
@@ -225,28 +215,42 @@ fn test_close_quorum_vote_threshold_not_met() {
 #[should_panic(expected = "Error(Contract, #201)")]
 fn test_close_nonexistent_proposal() {
     let e = Env::default();
-    let (govenor_address, votes_address, _, govenor) = create_govenor(&e);
-    e.register_contract_wasm(&Some(votes_address.clone()), VOTES_WASM);
-    let votes_client = VotesClient::new(&e, &votes_address);
-    let creater = Address::generate(&e);
+    e.mock_all_auths();
+    e.set_default_info();
 
-    votes_client.set_votes(&creater, &10_000_000_i128);
+    let bombadil = Address::generate(&e);
+    let samwise = Address::generate(&e);
+    let (token_address, token_client) = create_stellar_token(&e, &bombadil);
+    let (votes_address, votes_client) = create_token_votes(&e, &token_address);
+    let (govenor_address, governor_client, _) = create_govenor(&e, &votes_address);
+
+    let samwise_mint_amount: i128 = 10_000_000;
+    token_client.mint(&samwise, &samwise_mint_amount);
+    votes_client.deposit_for(&samwise, &samwise_mint_amount);
+
     let proposal_id = e.as_contract(&govenor_address, || {
         return storage::get_proposal_id(&e);
     });
-    govenor.close(&proposal_id);
+    governor_client.close(&proposal_id);
 }
 
 #[test]
 #[should_panic(expected = "Error(Contract, #204)")]
 fn test_close_vote_period_unfinished() {
     let e = Env::default();
-    let (govenor_address, votes_address, _, govenor) = create_govenor(&e);
-    e.register_contract_wasm(&Some(votes_address.clone()), VOTES_WASM);
-    let votes_client = VotesClient::new(&e, &votes_address);
-    let creater = Address::generate(&e);
+    e.mock_all_auths();
+    e.set_default_info();
 
-    votes_client.set_votes(&creater, &10_000_000_i128);
+    let bombadil = Address::generate(&e);
+    let samwise = Address::generate(&e);
+    let (token_address, token_client) = create_stellar_token(&e, &bombadil);
+    let (votes_address, votes_client) = create_token_votes(&e, &token_address);
+    let (govenor_address, governor_client, settings) = create_govenor(&e, &votes_address);
+
+    let samwise_mint_amount: i128 = 10_000_000;
+    token_client.mint(&samwise, &samwise_mint_amount);
+    votes_client.deposit_for(&samwise, &samwise_mint_amount);
+
     let calldata = Calldata {
         contract_id: Address::generate(&e),
         function: Symbol::new(&e, "test"),
@@ -272,11 +276,11 @@ fn test_close_vote_period_unfinished() {
                 id: proposal_id,
                 title,
                 description,
-                proposer: creater,
+                proposer: samwise,
                 calldata,
                 sub_calldata,
-                vote_start: 0,
-                vote_end: 1000,
+                vote_start: e.ledger().timestamp(),
+                vote_end: e.ledger().timestamp() + settings.vote_period,
             },
         );
         // Set proposal votes to ensure quorum is met
@@ -291,16 +295,7 @@ fn test_close_vote_period_unfinished() {
         );
         return proposal_id;
     });
-    e.ledger().set(LedgerInfo {
-        timestamp: e.ledger().timestamp().saturating_add(999),
-        protocol_version: 20,
-        sequence_number: e.ledger().sequence(),
-        network_id: Default::default(),
-        base_reserve: 10,
-        min_temp_entry_ttl: 999999,
-        min_persistent_entry_ttl: 999999,
-        max_entry_ttl: 9999999,
-    });
 
-    govenor.close(&proposal_id);
+    e.jump(settings.vote_period - 1);
+    governor_client.close(&proposal_id);
 }
