@@ -5,10 +5,11 @@ use soroban_sdk::{
     vec, Address, Env, String, Val, Vec,
 };
 
-use crate::errors::GovernorError;
 use crate::governor::Governor;
 use crate::storage::{self, Calldata, GovernorSettings, Proposal, ProposalStatus, SubCalldata};
 use crate::{constants::MAX_VOTE_PERIOD, dependencies::VotesClient};
+use crate::{errors::GovernorError, events::GovernorEvents};
+
 #[contract]
 pub struct GovernorContract;
 
@@ -58,18 +59,24 @@ impl Governor for GovernorContract {
             &proposal_id,
             &Proposal {
                 id: proposal_id,
-                title,
-                calldata,
+                title: title.clone(),
+                calldata: calldata.clone(),
                 sub_calldata,
                 description,
-                proposer: creator,
+                proposer: creator.clone(),
                 vote_start,
                 vote_end,
             },
         );
         storage::set_proposal_status(&e, &proposal_id, &storage::ProposalStatus::Pending);
         storage::set_proposal_id(&e, &(proposal_id + 1));
+
+        GovernorEvents::proposal_created(&e, proposal_id, creator, title, calldata);
         proposal_id
+    }
+
+    fn get_proposal(e: Env, proposal_id: u32) -> Option<Proposal> {
+        storage::get_proposal(&e, &proposal_id)
     }
 
     fn close(e: Env, proposal_id: u32) {
@@ -107,8 +114,10 @@ impl Governor for GovernorContract {
             && votes_for_percent as u32 >= settings.vote_threshold
         {
             storage::set_proposal_status(&e, &proposal_id, &ProposalStatus::Queued);
+            GovernorEvents::proposal_queued(&e, proposal_id, proposal.vote_end + settings.timelock);
         } else {
             storage::set_proposal_status(&e, &proposal_id, &ProposalStatus::Defeated);
+            GovernorEvents::proposal_defeated(&e, proposal_id);
         }
     }
 
@@ -148,6 +157,7 @@ impl Governor for GovernorContract {
             proposal.calldata.args,
         );
         storage::set_proposal_status(&e, &proposal_id, &ProposalStatus::Succeeded);
+        GovernorEvents::proposal_executed(&e, proposal_id);
     }
 
     fn cancel(e: Env, creator: Address, proposal_id: u32) {
@@ -162,6 +172,7 @@ impl Governor for GovernorContract {
             panic_with_error!(&e, GovernorError::CancelActiveProposalError);
         }
         storage::set_proposal_status(&e, &proposal_id, &ProposalStatus::Expired);
+        GovernorEvents::proposal_canceled(&e, proposal_id);
     }
 
     fn vote(e: Env, voter: Address, proposal_id: u32, support: u32) {
@@ -208,6 +219,7 @@ impl Governor for GovernorContract {
 
         storage::set_voter_status(&e, &voter, &proposal_id, &support);
         storage::set_proposal_vote_count(&e, &proposal_id, &vote_count);
+        GovernorEvents::vote_cast(&e, proposal_id, voter, support, voter_power);
     }
 
     fn get_vote(e: Env, voter: Address, proposal_id: u32) -> Option<u32> {

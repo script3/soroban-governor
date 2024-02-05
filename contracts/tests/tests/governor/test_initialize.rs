@@ -5,7 +5,7 @@ use soroban_governor::{
 };
 use soroban_sdk::{testutils::Address as _, Address, Env};
 use tests::{
-    common::{create_govenor, create_stellar_token, create_token_votes},
+    common::{create_govenor, create_stellar_token, create_token_votes, default_governor_settings},
     env::EnvTestUtils,
 };
 #[test]
@@ -17,7 +17,8 @@ fn test_initialize_sets_storage() {
     let bombadil = Address::generate(&e);
     let (token_address, _) = create_stellar_token(&e, &bombadil);
     let (votes_address, _) = create_token_votes(&e, &token_address);
-    let (govenor_address, _, settings) = create_govenor(&e, &votes_address);
+    let settings = default_governor_settings();
+    let (govenor_address, _) = create_govenor(&e, &votes_address, &settings);
 
     e.as_contract(&govenor_address, || {
         let storage_settings: GovernorSettings = storage::get_settings(&e);
@@ -47,7 +48,8 @@ fn test_initalize_already_initalized() {
     let bombadil = Address::generate(&e);
     let (token_address, _) = create_stellar_token(&e, &bombadil);
     let (votes_address, _) = create_token_votes(&e, &token_address);
-    let (_, governor_client, settings) = create_govenor(&e, &votes_address);
+    let settings = default_governor_settings();
+    let (_, governor_client) = create_govenor(&e, &votes_address, &settings);
     governor_client.initialize(&votes_address, &settings);
 }
 

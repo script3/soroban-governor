@@ -5,24 +5,33 @@ use soroban_votes::{TokenVotes, TokenVotesClient};
 
 //********** Governor **********//
 
+/// Create a governor contract
+///
+/// ### Arguments
+/// * `votes` - The address of the voting token
+/// * `settings` - The settings for the governor
 pub fn create_govenor<'a>(
     e: &Env,
     votes: &Address,
-) -> (Address, GovernorContractClient<'a>, GovernorSettings) {
+    settings: &GovernorSettings,
+) -> (Address, GovernorContractClient<'a>) {
     let governor_address = e.register_contract(None, GovernorContract {});
     let govenor_client: GovernorContractClient<'a> =
         GovernorContractClient::new(&e, &governor_address);
-    let settings = GovernorSettings {
-        proposal_threshold: 10_000_000,
+    govenor_client.initialize(&votes, settings);
+    return (governor_address, govenor_client);
+}
+
+pub fn default_governor_settings() -> GovernorSettings {
+    GovernorSettings {
+        proposal_threshold: 1_0000000,
         vote_delay: 60 * 60 * 24,
         vote_period: 60 * 60 * 24 * 7,
         timelock: 60 * 60 * 24,
         quorum: 80,
         counting_type: 5,
         vote_threshold: 51,
-    };
-    govenor_client.initialize(&votes, &settings);
-    return (governor_address, govenor_client, settings);
+    }
 }
 
 //********** Votes **********//

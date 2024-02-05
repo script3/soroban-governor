@@ -1,6 +1,6 @@
 use soroban_sdk::{contractclient, Address, Env, String, Vec};
 
-use crate::storage::{Calldata, GovernorSettings, SubCalldata};
+use crate::storage::{Calldata, GovernorSettings, Proposal, SubCalldata};
 
 #[contractclient(name = "GovernorClient")]
 pub trait Governor {
@@ -35,6 +35,14 @@ pub trait Governor {
         title: String,
         description: String,
     ) -> u32;
+
+    /// Get a proposal by its id
+    ///
+    /// Returns None if the proposal does not exist
+    ///
+    /// ### Arguments
+    /// * `proposal_id` - The id of the proposal to get
+    fn get_proposal(e: Env, proposal_id: u32) -> Option<Proposal>;
 
     /// Close the voting period for a proposal. Closing a proposal requires the quorum to be reached or the voting
     /// period to have ended. The proposal will be queued for execution if the quorum is reached and the vote passes.
