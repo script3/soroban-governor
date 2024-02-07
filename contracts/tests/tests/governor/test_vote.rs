@@ -1,11 +1,14 @@
 #[cfg(test)]
-use soroban_governor::storage::{self, Calldata, Proposal, ProposalStatus, SubCalldata};
+use soroban_governor::types::ProposalStatus;
 use soroban_sdk::{
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, Events},
-    vec, Address, Env, IntoVal, String, Symbol, TryIntoVal, Val,
+    vec, Address, Env, IntoVal, Symbol, TryIntoVal, Val,
 };
 use tests::{
-    common::{create_govenor, create_stellar_token, create_token_votes, default_governor_settings},
+    common::{
+        create_govenor, create_stellar_token, create_token_votes, default_governor_settings,
+        default_proposal_data,
+    },
     env::EnvTestUtils,
 };
 
@@ -31,22 +34,7 @@ fn test_vote() {
     let samwise_votes = 8_000 * 10i128.pow(7);
     votes_client.transfer(&frodo, &samwise, &samwise_votes);
 
-    let title = String::from_str(&e, "Test Title");
-    let description = String::from_str(&e, "Test Description");
-    let calldata = Calldata {
-        contract_id: Address::generate(&e),
-        function: Symbol::new(&e, "test"),
-        args: (1, 2, 3).into_val(&e),
-    };
-    let sub_calldata = vec![
-        &e,
-        SubCalldata {
-            contract_id: Address::generate(&e),
-            function: Symbol::new(&e, "test"),
-            args: (1, 2, 3).into_val(&e),
-            sub_auth: vec![&e],
-        },
-    ];
+    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
 
     // setup a proposal that can be voted on
     let proposal_id =
@@ -80,7 +68,12 @@ fn test_vote() {
     // validate chain results
     let votes = governor_client.get_vote(&samwise, &proposal_id);
     assert_eq!(votes, Some(voter_support));
-    // TODO: Expose status of proposal
+    let proposal = governor_client.get_proposal(&proposal_id).unwrap();
+    assert_eq!(proposal.data.status, ProposalStatus::Active);
+    let vote_count = governor_client.get_proposal_votes(&proposal_id);
+    assert_eq!(vote_count.votes_for, 0);
+    assert_eq!(vote_count.votes_against, samwise_votes);
+    assert_eq!(vote_count.votes_abstained, 0);
 
     // validate events
     let events = e.events().all();
@@ -107,84 +100,112 @@ fn test_vote_user_changes_support() {
     e.mock_all_auths();
 
     let bombadil = Address::generate(&e);
+    let frodo = Address::generate(&e);
     let samwise = Address::generate(&e);
     let (token_address, token_client) = create_stellar_token(&e, &bombadil);
     let (votes_address, votes_client) = create_token_votes(&e, &token_address);
     let settings = default_governor_settings();
-    let (govenor_address, governor_client) = create_govenor(&e, &votes_address, &settings);
+    let (_, governor_client) = create_govenor(&e, &votes_address, &settings);
 
-    let samwise_mint_amount: i128 = 10_000_000;
-    token_client.mint(&samwise, &samwise_mint_amount);
-    token_client.mint(&samwise, &samwise_mint_amount);
-    votes_client.deposit_for(&samwise, &samwise_mint_amount);
-    //Update past checkpoints
-    // votes_client.deposit_for(&samwise, &samwise_mint_amount);
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    token_client.mint(&frodo, &total_votes);
+    votes_client.deposit_for(&frodo, &total_votes);
 
-    let title = String::from_str(&e, "Test Title");
-    let description = String::from_str(&e, "Test Description");
-    let calldata = Calldata {
-        contract_id: Address::generate(&e),
-        function: Symbol::new(&e, "test"),
-        args: (1, 2, 3).into_val(&e),
-    };
-    let sub_calldata = vec![
-        &e,
-        SubCalldata {
-            contract_id: Address::generate(&e),
-            function: Symbol::new(&e, "test"),
-            args: (1, 2, 3).into_val(&e),
-            sub_auth: vec![&e],
-        },
-    ];
+    let samwise_votes = 8_000 * 10i128.pow(7);
+    votes_client.transfer(&frodo, &samwise, &samwise_votes);
 
-    let proposal_id = e.as_contract(&govenor_address, || {
-        let proposal_id: u32 = storage::get_proposal_id(&e);
-        storage::set_proposal(
-            &e,
-            &proposal_id,
-            &Proposal {
-                id: proposal_id,
-                title,
-                description,
-                proposer: samwise.clone(),
-                calldata,
-                sub_calldata,
-                vote_start: e.ledger().timestamp() + 1,
-                vote_end: e.ledger().timestamp() + 1 + settings.vote_period,
-            },
-        );
-        storage::set_proposal_status(&e, &proposal_id, &ProposalStatus::Active);
-        return proposal_id;
-    });
+    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+
+    // setup a proposal that can be voted on
+    let proposal_id =
+        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    e.jump_with_sequence(settings.vote_delay);
 
     let voter_support = 1;
     governor_client.vote(&samwise, &proposal_id, &voter_support);
-    e.as_contract(&govenor_address, || {
-        // check voter status
-        let voter_status = storage::get_voter_status(&e, &samwise, &proposal_id).unwrap();
-        assert_eq!(voter_status, voter_support);
-        // check proposal votes
-        let votes = storage::get_proposal_vote_count(&e, &proposal_id);
-        assert_eq!(votes.votes_abstained, 0);
-        assert_eq!(votes.votes_against, samwise_mint_amount);
-        assert_eq!(votes.votes_for, 0);
-        // check proposal status
-        let status = storage::get_proposal_status(&e, &proposal_id);
-        assert_eq!(status, ProposalStatus::Active);
-    });
+
+    let votes = governor_client.get_vote(&samwise, &proposal_id);
+    assert_eq!(votes, Some(voter_support));
+    let proposal = governor_client.get_proposal(&proposal_id).unwrap();
+    assert_eq!(proposal.data.status, ProposalStatus::Active);
+    let vote_count = governor_client.get_proposal_votes(&proposal_id);
+    assert_eq!(vote_count.votes_for, 0);
+    assert_eq!(vote_count.votes_against, samwise_votes);
+    assert_eq!(vote_count.votes_abstained, 0);
 
     let voter_support = 2;
     governor_client.vote(&samwise, &proposal_id, &voter_support);
-    e.as_contract(&govenor_address, || {
-        // check voter status
-        let voter_status = storage::get_voter_status(&e, &samwise, &proposal_id).unwrap();
-        assert_eq!(voter_status, voter_support);
-        // check proposal votes
-        let votes = storage::get_proposal_vote_count(&e, &proposal_id);
-        assert_eq!(votes.votes_abstained, 0);
-        assert_eq!(votes.votes_against, 0);
-        assert_eq!(votes.votes_for, samwise_mint_amount);
-    });
+
+    let votes = governor_client.get_vote(&samwise, &proposal_id);
+    assert_eq!(votes, Some(voter_support));
+    let proposal = governor_client.get_proposal(&proposal_id).unwrap();
+    assert_eq!(proposal.data.status, ProposalStatus::Active);
+    let vote_count = governor_client.get_proposal_votes(&proposal_id);
+    assert_eq!(vote_count.votes_for, samwise_votes);
+    assert_eq!(vote_count.votes_against, 0);
+    assert_eq!(vote_count.votes_abstained, 0);
+}
+
+#[test]
+fn test_vote_multiple_users() {
+    let e = Env::default();
+    e.set_default_info();
+    e.mock_all_auths();
+
+    let bombadil = Address::generate(&e);
+    let frodo = Address::generate(&e);
+    let samwise = Address::generate(&e);
+    let pippin = Address::generate(&e);
+    let merry = Address::generate(&e);
+    let bilbo = Address::generate(&e);
+
+    let (token_address, token_client) = create_stellar_token(&e, &bombadil);
+    let (votes_address, votes_client) = create_token_votes(&e, &token_address);
+    let settings = default_governor_settings();
+    let (_, governor_client) = create_govenor(&e, &votes_address, &settings);
+
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    token_client.mint(&frodo, &total_votes);
+    votes_client.deposit_for(&frodo, &total_votes);
+
+    let samwise_votes = 1_000 * 10i128.pow(7);
+    votes_client.transfer(&frodo, &samwise, &samwise_votes);
+    let pippin_votes = 500 * 10i128.pow(7);
+    votes_client.transfer(&frodo, &pippin, &pippin_votes);
+    let merry_votes = 1234567;
+    votes_client.transfer(&frodo, &merry, &merry_votes);
+    let bilbo_votes = 2345 * 10i128.pow(7);
+    votes_client.transfer(&frodo, &bilbo, &bilbo_votes);
+
+    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+
+    // setup a proposal that can be voted on
+    let proposal_id =
+        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    e.jump_with_sequence(settings.vote_delay);
+
+    governor_client.vote(&samwise, &proposal_id, &2);
+    e.jump_with_sequence(10);
+    governor_client.vote(&pippin, &proposal_id, &1);
+    e.jump_with_sequence(123);
+    governor_client.vote(&merry, &proposal_id, &1);
+    governor_client.vote(&bilbo, &proposal_id, &0);
+    e.jump_with_sequence(50);
+
+    let votes = governor_client.get_vote(&samwise, &proposal_id);
+    assert_eq!(votes, Some(2));
+    let votes = governor_client.get_vote(&pippin, &proposal_id);
+    assert_eq!(votes, Some(1));
+    let votes = governor_client.get_vote(&merry, &proposal_id);
+    assert_eq!(votes, Some(1));
+    let votes = governor_client.get_vote(&bilbo, &proposal_id);
+    assert_eq!(votes, Some(0));
+    let proposal = governor_client.get_proposal(&proposal_id).unwrap();
+    assert_eq!(proposal.data.status, ProposalStatus::Active);
+    let vote_count = governor_client.get_proposal_votes(&proposal_id);
+    assert_eq!(vote_count.votes_for, samwise_votes);
+    assert_eq!(vote_count.votes_against, pippin_votes + merry_votes);
+    assert_eq!(vote_count.votes_abstained, bilbo_votes);
 }
 
 #[test]
@@ -195,87 +216,54 @@ fn test_vote_nonexistent_proposal() {
     e.mock_all_auths();
 
     let bombadil = Address::generate(&e);
+    let frodo = Address::generate(&e);
     let samwise = Address::generate(&e);
     let (token_address, token_client) = create_stellar_token(&e, &bombadil);
     let (votes_address, votes_client) = create_token_votes(&e, &token_address);
     let settings = default_governor_settings();
-    let (govenor_address, governor_client) = create_govenor(&e, &votes_address, &settings);
+    let (_, governor_client) = create_govenor(&e, &votes_address, &settings);
 
-    let samwise_mint_amount: i128 = 10_000_000;
-    token_client.mint(&samwise, &samwise_mint_amount);
-    token_client.mint(&samwise, &samwise_mint_amount);
-    votes_client.deposit_for(&samwise, &samwise_mint_amount);
-    //Update past checkpoints
-    votes_client.deposit_for(&samwise, &samwise_mint_amount);
-    let proposal_id = e.as_contract(&govenor_address, || {
-        let proposal_id: u32 = storage::get_proposal_id(&e);
-        return proposal_id;
-    });
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    token_client.mint(&frodo, &total_votes);
+    votes_client.deposit_for(&frodo, &total_votes);
+
+    let samwise_votes = 8_000 * 10i128.pow(7);
+    votes_client.transfer(&frodo, &samwise, &samwise_votes);
 
     let voter_support = 1;
-    governor_client.vote(&samwise, &proposal_id, &voter_support);
+    governor_client.vote(&samwise, &0, &voter_support);
 }
 
 #[test]
 #[should_panic(expected = "Error(Contract, #202)")]
-fn test_vote_proposal_not_active() {
+fn test_vote_delay_not_ended() {
     let e = Env::default();
     e.set_default_info();
     e.mock_all_auths();
 
     let bombadil = Address::generate(&e);
+    let frodo = Address::generate(&e);
     let samwise = Address::generate(&e);
     let (token_address, token_client) = create_stellar_token(&e, &bombadil);
     let (votes_address, votes_client) = create_token_votes(&e, &token_address);
     let settings = default_governor_settings();
-    let (govenor_address, governor_client) = create_govenor(&e, &votes_address, &settings);
+    let (_, governor_client) = create_govenor(&e, &votes_address, &settings);
 
-    let samwise_mint_amount: i128 = 10_000_000;
-    token_client.mint(&samwise, &samwise_mint_amount);
-    token_client.mint(&samwise, &samwise_mint_amount);
-    votes_client.deposit_for(&samwise, &samwise_mint_amount);
-    //Update past checkpoints
-    votes_client.deposit_for(&samwise, &samwise_mint_amount);
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    token_client.mint(&frodo, &total_votes);
+    votes_client.deposit_for(&frodo, &total_votes);
 
-    let title = String::from_str(&e, "Test Title");
-    let description = String::from_str(&e, "Test Description");
-    let calldata = Calldata {
-        contract_id: Address::generate(&e),
-        function: Symbol::new(&e, "test"),
-        args: (1, 2, 3).into_val(&e),
-    };
-    let sub_calldata = vec![
-        &e,
-        SubCalldata {
-            contract_id: Address::generate(&e),
-            function: Symbol::new(&e, "test"),
-            args: (1, 2, 3).into_val(&e),
-            sub_auth: vec![&e],
-        },
-    ];
+    let samwise_votes = 8_000 * 10i128.pow(7);
+    votes_client.transfer(&frodo, &samwise, &samwise_votes);
 
-    let proposal_id = e.as_contract(&govenor_address, || {
-        let proposal_id: u32 = storage::get_proposal_id(&e);
-        storage::set_proposal(
-            &e,
-            &proposal_id,
-            &Proposal {
-                id: proposal_id,
-                title,
-                description,
-                proposer: samwise.clone(),
-                calldata,
-                sub_calldata,
-                vote_start: e.ledger().timestamp() + 5,
-                vote_end: e.ledger().timestamp() + 5 + settings.vote_period,
-            },
-        );
-        return proposal_id;
-    });
+    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
 
-    e.mock_all_auths();
-    let voter_support = 1;
-    governor_client.vote(&samwise, &proposal_id, &voter_support);
+    // setup a proposal that can be voted on
+    let proposal_id =
+        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    e.jump_with_sequence(settings.vote_delay - 1);
+
+    governor_client.vote(&samwise, &proposal_id, &2);
 }
 
 #[test]
@@ -286,55 +274,27 @@ fn test_vote_invalid_support_option() {
     e.mock_all_auths();
 
     let bombadil = Address::generate(&e);
+    let frodo = Address::generate(&e);
     let samwise = Address::generate(&e);
+
     let (token_address, token_client) = create_stellar_token(&e, &bombadil);
     let (votes_address, votes_client) = create_token_votes(&e, &token_address);
     let settings = default_governor_settings();
-    let (govenor_address, governor_client) = create_govenor(&e, &votes_address, &settings);
+    let (_, governor_client) = create_govenor(&e, &votes_address, &settings);
 
-    let samwise_mint_amount: i128 = 10_000_000;
-    token_client.mint(&samwise, &samwise_mint_amount);
-    token_client.mint(&samwise, &samwise_mint_amount);
-    votes_client.deposit_for(&samwise, &samwise_mint_amount);
-    //Update past checkpoints
-    votes_client.deposit_for(&samwise, &samwise_mint_amount);
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    token_client.mint(&frodo, &total_votes);
+    votes_client.deposit_for(&frodo, &total_votes);
 
-    let calldata = Calldata {
-        contract_id: Address::generate(&e),
-        function: Symbol::new(&e, "test"),
-        args: (1, 2, 3).into_val(&e),
-    };
-    let sub_calldata = vec![
-        &e,
-        SubCalldata {
-            contract_id: Address::generate(&e),
-            function: Symbol::new(&e, "test"),
-            args: (1, 2, 3).into_val(&e),
-            sub_auth: vec![&e],
-        },
-    ];
-    let title = String::from_str(&e, "Test Title");
-    let description = String::from_str(&e, "Test Description");
-    let proposal_id = e.as_contract(&govenor_address, || {
-        let proposal_id: u32 = storage::get_proposal_id(&e);
-        storage::set_proposal(
-            &e,
-            &proposal_id,
-            &Proposal {
-                id: proposal_id,
-                title,
-                description,
-                proposer: samwise.clone(),
-                calldata,
-                sub_calldata,
-                vote_start: e.ledger().timestamp(),
-                vote_end: e.ledger().timestamp() + settings.vote_period,
-            },
-        );
-        return proposal_id;
-    });
+    let samwise_votes = 8_000 * 10i128.pow(7);
+    votes_client.transfer(&frodo, &samwise, &samwise_votes);
 
-    e.mock_all_auths();
-    let voter_support = 3;
-    governor_client.vote(&samwise, &proposal_id, &voter_support);
+    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+
+    // setup a proposal that can be voted on
+    let proposal_id =
+        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    e.jump_with_sequence(settings.vote_delay);
+
+    governor_client.vote(&samwise, &proposal_id, &3);
 }

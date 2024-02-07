@@ -1,13 +1,12 @@
+use soroban_governor::types::GovernorSettings;
 #[cfg(test)]
-use soroban_governor::{
-    storage::{self, GovernorSettings},
-    GovernorContract, GovernorContractClient,
-};
+use soroban_governor::{GovernorContract, GovernorContractClient};
 use soroban_sdk::{testutils::Address as _, Address, Env};
 use tests::{
     common::{create_govenor, create_stellar_token, create_token_votes, default_governor_settings},
     env::EnvTestUtils,
 };
+
 #[test]
 fn test_initialize_sets_storage() {
     let e = Env::default();
@@ -18,24 +17,16 @@ fn test_initialize_sets_storage() {
     let (token_address, _) = create_stellar_token(&e, &bombadil);
     let (votes_address, _) = create_token_votes(&e, &token_address);
     let settings = default_governor_settings();
-    let (govenor_address, _) = create_govenor(&e, &votes_address, &settings);
+    let (_, governor_client) = create_govenor(&e, &votes_address, &settings);
 
-    e.as_contract(&govenor_address, || {
-        let storage_settings: GovernorSettings = storage::get_settings(&e);
-
-        assert!(storage::get_is_init(&e));
-        assert_eq!(storage::get_voter_token_address(&e), votes_address);
-        assert_eq!(storage_settings.counting_type, settings.counting_type);
-        assert_eq!(
-            storage_settings.proposal_threshold,
-            settings.proposal_threshold
-        );
-        assert_eq!(storage_settings.quorum, settings.quorum);
-        assert_eq!(storage_settings.timelock, settings.timelock);
-        assert_eq!(storage_settings.vote_delay, settings.vote_delay);
-        assert_eq!(storage_settings.vote_period, settings.vote_period);
-        assert_eq!(storage_settings.vote_threshold, settings.vote_threshold);
-    });
+    let result = governor_client.settings();
+    assert_eq!(result.counting_type, settings.counting_type);
+    assert_eq!(result.proposal_threshold, settings.proposal_threshold);
+    assert_eq!(result.quorum, settings.quorum);
+    assert_eq!(result.timelock, settings.timelock);
+    assert_eq!(result.vote_delay, settings.vote_delay);
+    assert_eq!(result.vote_period, settings.vote_period);
+    assert_eq!(result.vote_threshold, settings.vote_threshold);
 }
 
 #[test]

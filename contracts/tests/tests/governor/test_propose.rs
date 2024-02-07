@@ -1,11 +1,14 @@
 #[cfg(test)]
-use soroban_governor::storage::{Calldata, SubCalldata};
+use soroban_governor::types::ProposalStatus;
 use soroban_sdk::{
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, Events},
-    vec, Address, Env, IntoVal, String, Symbol, TryIntoVal, Val,
+    vec, Address, Env, IntoVal, Symbol, TryIntoVal, Val,
 };
 use tests::{
-    common::{create_govenor, create_stellar_token, create_token_votes, default_governor_settings},
+    common::{
+        create_govenor, create_stellar_token, create_token_votes, default_governor_settings,
+        default_proposal_data,
+    },
     env::EnvTestUtils,
 };
 
@@ -25,25 +28,10 @@ fn test_propose() {
     token_client.mint(&samwise, &samwise_mint_amount);
     votes_client.deposit_for(&samwise, &samwise_mint_amount);
 
-    let title = String::from_str(&e, "Test Title");
-    let description = String::from_str(&e, "Test Description");
-    let calldata = Calldata {
-        contract_id: Address::generate(&e),
-        function: Symbol::new(&e, "test"),
-        args: (1, 2, 3).into_val(&e),
-    };
-    let sub_calldata = &vec![
-        &e,
-        SubCalldata {
-            contract_id: Address::generate(&e),
-            function: Symbol::new(&e, "test"),
-            args: (1, 2, 3).into_val(&e),
-            sub_auth: vec![&e],
-        },
-    ];
+    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
 
     let proposal_id =
-        governor_client.propose(&samwise, &calldata, sub_calldata, &title, &description);
+        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
 
     // verify auth
     assert_eq!(
@@ -72,36 +60,36 @@ fn test_propose() {
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
     assert_eq!(proposal.id, proposal_id);
     assert_eq!(proposal.id, 0);
-    assert_eq!(proposal.calldata.function, calldata.function);
-    assert_eq!(proposal.calldata.contract_id, calldata.contract_id);
-    assert_eq!(proposal.calldata.args, calldata.args);
+    assert_eq!(proposal.config.calldata.function, calldata.function);
+    assert_eq!(proposal.config.calldata.contract_id, calldata.contract_id);
+    assert_eq!(proposal.config.calldata.args, calldata.args);
     assert_eq!(
-        proposal.sub_calldata.get(0).unwrap().contract_id,
+        proposal.config.sub_calldata.get(0).unwrap().contract_id,
         sub_calldata.get(0).unwrap().contract_id
     );
     assert_eq!(
-        proposal.sub_calldata.get(0).unwrap().function,
+        proposal.config.sub_calldata.get(0).unwrap().function,
         sub_calldata.get(0).unwrap().function
     );
     assert_eq!(
-        proposal.sub_calldata.get(0).unwrap().args,
+        proposal.config.sub_calldata.get(0).unwrap().args,
         sub_calldata.get(0).unwrap().args
     );
     assert_eq!(
-        proposal.sub_calldata.get(0).unwrap().sub_auth.len(),
+        proposal.config.sub_calldata.get(0).unwrap().sub_auth.len(),
         sub_calldata.get(0).unwrap().sub_auth.len()
     );
     assert_eq!(proposal.id, 0);
-    assert_eq!(proposal.proposer, samwise);
-    assert_eq!(proposal.title, title);
-    assert_eq!(proposal.description, description);
-    assert_eq!(proposal.vote_start, settings.vote_delay);
+    assert_eq!(proposal.config.proposer, samwise);
+    assert_eq!(proposal.config.title, title);
+    assert_eq!(proposal.config.description, description);
+    assert_eq!(proposal.data.vote_start, settings.vote_delay);
     assert_eq!(
-        proposal.vote_end,
+        proposal.data.vote_end,
         settings.vote_delay + settings.vote_period
     );
-    // TODO: Expose status
-    // assert_eq!(proposal.status, ProposalStatus::Pending);
+
+    assert_eq!(proposal.data.status, ProposalStatus::Pending);
 
     // verify events
     let events = e.events().all();
@@ -143,21 +131,7 @@ fn test_propose_below_proposal_threshold() {
     token_client.mint(&samwise, &samwise_mint_amount);
     votes_client.deposit_for(&samwise, &samwise_mint_amount);
 
-    let calldata = Calldata {
-        contract_id: Address::generate(&e),
-        function: Symbol::new(&e, "test"),
-        args: (1, 2, 3).into_val(&e),
-    };
-    let sub_calldata = &vec![
-        &e,
-        SubCalldata {
-            contract_id: Address::generate(&e),
-            function: Symbol::new(&e, "test"),
-            args: (1, 2, 3).into_val(&e),
-            sub_auth: vec![&e],
-        },
-    ];
-    let title = String::from_str(&e, "Test Title");
-    let description = String::from_str(&e, "Test Description");
-    governor_client.propose(&samwise, &calldata, sub_calldata, &title, &description);
+    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+
+    governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
 }

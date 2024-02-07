@@ -1,6 +1,9 @@
 use sep_41_token::testutils::{MockTokenClient, MockTokenWASM};
-use soroban_governor::{storage::GovernorSettings, GovernorContract, GovernorContractClient};
-use soroban_sdk::{testutils::Address as _, Address, Env, IntoVal};
+use soroban_governor::{
+    types::{Calldata, GovernorSettings, SubCalldata},
+    GovernorContract, GovernorContractClient,
+};
+use soroban_sdk::{testutils::Address as _, vec, Address, Env, IntoVal, String, Symbol, Vec};
 use soroban_votes::{TokenVotes, TokenVotesClient};
 
 //********** Governor **********//
@@ -28,10 +31,30 @@ pub fn default_governor_settings() -> GovernorSettings {
         vote_delay: 60 * 60 * 24,
         vote_period: 60 * 60 * 24 * 7,
         timelock: 60 * 60 * 24,
-        quorum: 80,
-        counting_type: 5,
-        vote_threshold: 51,
+        quorum: 100,          // 1%
+        counting_type: 4,     // 0x001 (for)
+        vote_threshold: 5100, // 51%
     }
+}
+
+pub fn default_proposal_data(e: &Env) -> (Calldata, Vec<SubCalldata>, String, String) {
+    let calldata = Calldata {
+        contract_id: Address::generate(&e),
+        function: Symbol::new(e, "test"),
+        args: (1, 2, 3).into_val(e),
+    };
+    let sub_calldata = vec![
+        e,
+        SubCalldata {
+            contract_id: Address::generate(e),
+            function: Symbol::new(e, "test"),
+            args: (1, 2, 3).into_val(e),
+            sub_auth: vec![e],
+        },
+    ];
+    let title = String::from_str(e, "Test Title");
+    let description = String::from_str(e, "Test Description");
+    return (calldata, sub_calldata, title, description);
 }
 
 //********** Votes **********//

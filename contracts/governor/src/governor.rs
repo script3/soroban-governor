@@ -1,6 +1,6 @@
 use soroban_sdk::{contractclient, Address, Env, String, Vec};
 
-use crate::storage::{Calldata, GovernorSettings, Proposal, SubCalldata};
+use crate::types::{Calldata, GovernorSettings, Proposal, SubCalldata, VoteCount};
 
 #[contractclient(name = "GovernorClient")]
 pub trait Governor {
@@ -101,4 +101,13 @@ pub trait Governor {
     /// ### Panics
     /// * If the proposal_id is invalid
     fn get_vote(e: Env, voter: Address, proposal_id: u32) -> Option<u32>;
+
+    /// Get the vote count for a proposal.
+    ///
+    /// Returns the vote count for the proposal, including the number of votes for, against, and abstained.
+    /// If the proposal does not exist or has not been voted against, the vote count will be all zeros.
+    ///
+    /// ### Arguments
+    /// * `proposal_id` - The id of the proposal to get the vote count for
+    fn get_proposal_votes(e: Env, proposal_id: u32) -> VoteCount;
 }

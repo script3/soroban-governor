@@ -1,6 +1,6 @@
 use soroban_sdk::{Address, Env, String, Symbol};
 
-use crate::storage::Calldata;
+use crate::types::Calldata;
 
 pub struct GovernorEvents {}
 
