@@ -4,7 +4,8 @@ resolver = "2"
 members = [ 
     "contracts/governor",
     "contracts/votes",
-    "contracts/tests"
+    "contracts/tests",
+    "contracts/mock-subcall"
 ]
 
 [profile.release-with-logs]
