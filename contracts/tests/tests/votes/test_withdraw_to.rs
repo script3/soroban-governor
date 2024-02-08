@@ -3,10 +3,7 @@ use soroban_sdk::{
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, Events},
     vec, Address, Env, IntoVal, Symbol, Val,
 };
-use tests::{
-    common::{create_stellar_token, create_token_votes},
-    env::EnvTestUtils,
-};
+use tests::{common::create_stellar_token, env::EnvTestUtils, votes::create_token_votes};
 
 #[test]
 fn test_withdraw_to() {

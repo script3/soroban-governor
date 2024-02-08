@@ -5,11 +5,10 @@ use soroban_sdk::{
     vec, Address, Env, IntoVal, Symbol, TryIntoVal, Val,
 };
 use tests::{
-    common::{
-        create_govenor, create_stellar_token, create_token_votes, default_governor_settings,
-        default_proposal_data,
-    },
+    common::create_stellar_token,
     env::EnvTestUtils,
+    governor::{create_governor, default_governor_settings, default_proposal_data},
+    votes::create_token_votes,
 };
 
 #[test]
@@ -22,7 +21,7 @@ fn test_propose() {
     let (token_address, token_client) = create_stellar_token(&e, &bombadil);
     let (votes_address, votes_client) = create_token_votes(&e, &token_address);
     let settings = default_governor_settings();
-    let (govenor_address, governor_client) = create_govenor(&e, &votes_address, &settings);
+    let (govenor_address, governor_client) = create_governor(&e, &votes_address, &settings);
 
     let samwise_mint_amount: i128 = 10_000_000;
     token_client.mint(&samwise, &samwise_mint_amount);
@@ -125,7 +124,7 @@ fn test_propose_below_proposal_threshold() {
     let (token_address, token_client) = create_stellar_token(&e, &bombadil);
     let (votes_address, votes_client) = create_token_votes(&e, &token_address);
     let settings = default_governor_settings();
-    let (_, governor_client) = create_govenor(&e, &votes_address, &settings);
+    let (_, governor_client) = create_governor(&e, &votes_address, &settings);
 
     let samwise_mint_amount: i128 = 999_999;
     token_client.mint(&samwise, &samwise_mint_amount);

@@ -5,11 +5,10 @@ use soroban_sdk::{
     vec, Address, Env, IntoVal, Symbol,
 };
 use tests::{
-    common::{
-        create_govenor, create_stellar_token, create_token_votes, default_governor_settings,
-        default_proposal_data,
-    },
+    common::create_stellar_token,
     env::EnvTestUtils,
+    governor::{create_governor, default_governor_settings, default_proposal_data},
+    votes::create_token_votes,
 };
 
 #[test]
@@ -26,7 +25,7 @@ fn test_execute() {
     let (token_address, token_client) = create_stellar_token(&e, &bombadil);
     let (votes_address, votes_client) = create_token_votes(&e, &token_address);
     let settings = default_governor_settings();
-    let (govenor_address, governor_client) = create_govenor(&e, &votes_address, &settings);
+    let (govenor_address, governor_client) = create_governor(&e, &votes_address, &settings);
 
     let total_votes: i128 = 10_000 * 10i128.pow(7);
     token_client.mint(&frodo, &total_votes);
@@ -100,7 +99,7 @@ fn test_execute_nonexistent_proposal() {
     let (token_address, _) = create_stellar_token(&e, &bombadil);
     let (votes_address, _) = create_token_votes(&e, &token_address);
     let settings = default_governor_settings();
-    let (_, governor_client) = create_govenor(&e, &votes_address, &settings);
+    let (_, governor_client) = create_governor(&e, &votes_address, &settings);
 
     governor_client.execute(&0);
 }
@@ -119,7 +118,7 @@ fn test_execute_proposal_not_queued() {
     let (token_address, token_client) = create_stellar_token(&e, &bombadil);
     let (votes_address, votes_client) = create_token_votes(&e, &token_address);
     let settings = default_governor_settings();
-    let (govenor_address, governor_client) = create_govenor(&e, &votes_address, &settings);
+    let (govenor_address, governor_client) = create_governor(&e, &votes_address, &settings);
 
     let total_votes: i128 = 10_000 * 10i128.pow(7);
     token_client.mint(&frodo, &total_votes);
@@ -170,7 +169,7 @@ fn test_execute_timelock_not_met() {
     let (token_address, token_client) = create_stellar_token(&e, &bombadil);
     let (votes_address, votes_client) = create_token_votes(&e, &token_address);
     let settings = default_governor_settings();
-    let (govenor_address, governor_client) = create_govenor(&e, &votes_address, &settings);
+    let (govenor_address, governor_client) = create_governor(&e, &votes_address, &settings);
 
     let total_votes: i128 = 10_000 * 10i128.pow(7);
     token_client.mint(&frodo, &total_votes);

@@ -5,11 +5,10 @@ use soroban_sdk::{
     vec, Address, Env, IntoVal, Symbol,
 };
 use tests::{
-    common::{
-        create_govenor, create_stellar_token, create_token_votes, default_governor_settings,
-        default_proposal_data,
-    },
+    common::create_stellar_token,
     env::EnvTestUtils,
+    governor::{create_governor, default_governor_settings, default_proposal_data},
+    votes::create_token_votes,
 };
 
 #[test]
@@ -26,7 +25,7 @@ fn test_close_proposal_queued() {
     let (token_address, token_client) = create_stellar_token(&e, &bombadil);
     let (votes_address, votes_client) = create_token_votes(&e, &token_address);
     let settings = default_governor_settings();
-    let (govenor_address, governor_client) = create_govenor(&e, &votes_address, &settings);
+    let (govenor_address, governor_client) = create_governor(&e, &votes_address, &settings);
 
     let total_votes: i128 = 10_000 * 10i128.pow(7);
     token_client.mint(&frodo, &total_votes);
@@ -86,7 +85,7 @@ fn test_close_quorum_not_met() {
     let (token_address, token_client) = create_stellar_token(&e, &bombadil);
     let (votes_address, votes_client) = create_token_votes(&e, &token_address);
     let settings = default_governor_settings();
-    let (govenor_address, governor_client) = create_govenor(&e, &votes_address, &settings);
+    let (govenor_address, governor_client) = create_governor(&e, &votes_address, &settings);
 
     let total_votes: i128 = 10_000 * 10i128.pow(7);
     token_client.mint(&frodo, &total_votes);
@@ -142,7 +141,7 @@ fn test_close_vote_threshold_not_met() {
     let (token_address, token_client) = create_stellar_token(&e, &bombadil);
     let (votes_address, votes_client) = create_token_votes(&e, &token_address);
     let settings = default_governor_settings();
-    let (govenor_address, governor_client) = create_govenor(&e, &votes_address, &settings);
+    let (govenor_address, governor_client) = create_governor(&e, &votes_address, &settings);
 
     let total_votes: i128 = 10_000 * 10i128.pow(7);
     token_client.mint(&frodo, &total_votes);
@@ -201,7 +200,7 @@ fn test_close_tracks_quorum_with_counting_type() {
     let (votes_address, votes_client) = create_token_votes(&e, &token_address);
     let mut settings = default_governor_settings();
     settings.counting_type = 0b011; // include against and abstain in quorum
-    let (_, governor_client) = create_govenor(&e, &votes_address, &settings);
+    let (_, governor_client) = create_governor(&e, &votes_address, &settings);
 
     let total_votes: i128 = 10_000 * 10i128.pow(7);
     token_client.mint(&frodo, &total_votes);
@@ -245,7 +244,7 @@ fn test_close_nonexistent_proposal() {
     let (token_address, token_client) = create_stellar_token(&e, &bombadil);
     let (votes_address, votes_client) = create_token_votes(&e, &token_address);
     let settings = default_governor_settings();
-    let (govenor_address, governor_client) = create_govenor(&e, &votes_address, &settings);
+    let (govenor_address, governor_client) = create_governor(&e, &votes_address, &settings);
 
     let samwise_mint_amount: i128 = 10_000_000;
     token_client.mint(&samwise, &samwise_mint_amount);
@@ -269,7 +268,7 @@ fn test_close_vote_period_unfinished() {
     let (token_address, token_client) = create_stellar_token(&e, &bombadil);
     let (votes_address, votes_client) = create_token_votes(&e, &token_address);
     let settings = default_governor_settings();
-    let (_, governor_client) = create_govenor(&e, &votes_address, &settings);
+    let (_, governor_client) = create_governor(&e, &votes_address, &settings);
 
     let samwise_mint_amount: i128 = 10_000_000;
     token_client.mint(&samwise, &samwise_mint_amount);

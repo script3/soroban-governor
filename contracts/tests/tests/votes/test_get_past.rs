@@ -1,9 +1,6 @@
 #[cfg(test)]
 use soroban_sdk::{testutils::Address as _, Address, Env};
-use tests::{
-    common::{create_stellar_token, create_token_votes},
-    env::EnvTestUtils,
-};
+use tests::{common::create_stellar_token, env::EnvTestUtils, votes::create_token_votes};
 
 #[test]
 fn test_get_past() {
