@@ -1,6 +1,8 @@
 use soroban_sdk::{panic_with_error, Address, Env};
 
-use crate::{error::TokenVotesError, events::VoterTokenEvents, storage};
+use crate::{
+    checkpoints::add_checkpoint, error::TokenVotesError, events::VoterTokenEvents, storage,
+};
 
 /// Mint voting units to an address
 pub fn mint_voting_units(e: &Env, to: &Address, amount: i128) {
@@ -16,7 +18,7 @@ pub fn mint_voting_units(e: &Env, to: &Address, amount: i128) {
         storage::set_total_supply(e, &total_supply);
 
         let mut supply_checkpoints = storage::get_total_supply_checkpoints(e);
-        supply_checkpoints.push_back(prev_supply.clone());
+        add_checkpoint(e, &mut supply_checkpoints, &prev_supply);
         storage::set_total_supply_checkpoints(e, &supply_checkpoints);
 
         move_voting_units(e, None, Some(&storage::get_delegate(e, to)), amount);
@@ -37,7 +39,7 @@ pub fn burn_voting_units(e: &Env, from: &Address, amount: i128) {
         storage::set_total_supply(e, &total_supply);
 
         let mut supply_checkpoints = storage::get_total_supply_checkpoints(e);
-        supply_checkpoints.push_back(prev_supply.clone());
+        add_checkpoint(e, &mut supply_checkpoints, &prev_supply);
         storage::set_total_supply_checkpoints(e, &supply_checkpoints);
 
         move_voting_units(e, Some(&storage::get_delegate(e, from)), None, amount);
@@ -71,7 +73,7 @@ pub fn move_voting_units(e: &Env, from: Option<&Address>, to: Option<&Address>, 
             storage::set_voting_units(e, from, &voting_units);
 
             let mut voting_checkpoints = storage::get_voting_units_checkpoints(e, from);
-            voting_checkpoints.push_back(prev_units.clone());
+            add_checkpoint(e, &mut voting_checkpoints, &prev_units);
             storage::set_voting_units_checkpoints(e, from, &voting_checkpoints);
 
             VoterTokenEvents::votes_changed(
@@ -92,7 +94,7 @@ pub fn move_voting_units(e: &Env, from: Option<&Address>, to: Option<&Address>, 
             storage::set_voting_units(e, to, &voting_units);
 
             let mut voting_checkpoints = storage::get_voting_units_checkpoints(e, to);
-            voting_checkpoints.push_back(prev_units.clone());
+            add_checkpoint(e, &mut voting_checkpoints, &prev_units);
             storage::set_voting_units_checkpoints(e, to, &voting_checkpoints);
 
             VoterTokenEvents::votes_changed(e, to.clone(), prev_units.amount, voting_units.amount);

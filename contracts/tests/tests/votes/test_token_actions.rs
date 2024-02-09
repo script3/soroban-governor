@@ -114,6 +114,7 @@ fn test_token_actions() {
 fn test_burn() {
     let e = Env::default();
     e.mock_all_auths();
+    e.set_default_info();
 
     let bombadil = Address::generate(&e);
     let user1 = Address::generate(&e);
@@ -176,6 +177,7 @@ fn test_burn() {
 fn transfer_insufficient_balance() {
     let e = Env::default();
     e.mock_all_auths();
+    e.set_default_info();
 
     let bombadil = Address::generate(&e);
     let user1 = Address::generate(&e);
@@ -198,6 +200,7 @@ fn transfer_insufficient_balance() {
 fn transfer_from_insufficient_allowance() {
     let e = Env::default();
     e.mock_all_auths();
+    e.set_default_info();
 
     let bombadil = Address::generate(&e);
     let user1 = Address::generate(&e);
@@ -223,6 +226,7 @@ fn transfer_from_insufficient_allowance() {
 fn initialize_already_initialized() {
     let e = Env::default();
     e.mock_all_auths();
+    e.set_default_info();
 
     let bombadil = Address::generate(&e);
     let (token_id, _) = create_stellar_token(&e, &bombadil);
