@@ -641,6 +641,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "mock-subcall"
+version = "0.0.0"
+dependencies = [
+ "sep-41-token",
+ "soroban-sdk",
+]
+
+[[package]]
 name = "num-bigint"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"

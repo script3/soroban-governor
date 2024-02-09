@@ -1,12 +1,14 @@
+use soroban_governor::types::ProposalStatus;
 #[cfg(test)]
-use soroban_governor::storage::{self, Calldata, Proposal, ProposalStatus, SubCalldata};
 use soroban_sdk::{
-    testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation},
-    vec, Address, Env, IntoVal, String, Symbol, TryIntoVal,
+    testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, Events},
+    vec, Address, Env, IntoVal, Symbol, TryIntoVal,
 };
 use tests::{
-    common::{create_govenor, create_stellar_token, create_token_votes},
+    common::create_stellar_token,
     env::EnvTestUtils,
+    governor::{create_governor, default_governor_settings, default_proposal_data},
+    votes::create_token_votes,
 };
 
 #[test]
@@ -19,50 +21,23 @@ fn test_cancel() {
     let samwise = Address::generate(&e);
     let (token_address, token_client) = create_stellar_token(&e, &bombadil);
     let (votes_address, votes_client) = create_token_votes(&e, &token_address);
-    let (govenor_address, governor_client, settings) = create_govenor(&e, &votes_address);
+    let settings = default_governor_settings();
+    let (govenor_address, governor_client) = create_governor(&e, &votes_address, &settings);
 
-    let samwise_mint_amount: i128 = 10_000_000;
-    token_client.mint(&samwise, &samwise_mint_amount);
-    votes_client.deposit_for(&samwise, &samwise_mint_amount);
+    let samwise_votes: i128 = 1 * 10i128.pow(7);
+    token_client.mint(&samwise, &samwise_votes);
+    votes_client.deposit_for(&samwise, &samwise_votes);
 
-    let calldata = Calldata {
-        contract_id: Address::generate(&e),
-        function: Symbol::new(&e, "test"),
-        args: (1, 2, 3).into_val(&e),
-    };
-    let sub_calldata = vec![
-        &e,
-        SubCalldata {
-            contract_id: Address::generate(&e),
-            function: Symbol::new(&e, "test"),
-            args: (1, 2, 3).into_val(&e),
-            sub_auth: vec![&e],
-        },
-    ];
-    let title = String::from_str(&e, "Test Title");
-    let description = String::from_str(&e, "Test Description");
+    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
 
-    let proposal_id = e.as_contract(&govenor_address, || {
-        let proposal_id: u32 = storage::get_proposal_id(&e);
-        storage::set_proposal(
-            &e,
-            &proposal_id,
-            &Proposal {
-                id: proposal_id,
-                title,
-                description,
-                proposer: samwise.clone(),
-                calldata,
-                sub_calldata,
-                vote_start: e.ledger().timestamp(),
-                vote_end: e.ledger().timestamp() + settings.vote_period,
-            },
-        );
-        storage::set_proposal_status(&e, &proposal_id, &ProposalStatus::Pending);
-        return proposal_id;
-    });
+    // setup a proposal
+    let proposal_id =
+        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    e.jump_with_sequence(settings.vote_delay / 2);
 
-    governor_client.cancel(&samwise.clone(), &proposal_id);
+    governor_client.cancel(&samwise, &proposal_id);
+
+    // verify auths
     assert_eq!(
         e.auths()[0],
         (
@@ -77,11 +52,25 @@ fn test_cancel() {
             }
         )
     );
-    e.as_contract(&govenor_address, || {
-        let proposal_id: u32 = storage::get_proposal_id(&e);
-        let proposal_status = storage::get_proposal_status(&e, &proposal_id);
-        assert_eq!(proposal_status, ProposalStatus::Expired);
-    });
+
+    // verify chain results
+    let proposal = governor_client.get_proposal(&proposal_id).unwrap();
+    assert_eq!(proposal.data.status, ProposalStatus::Canceled);
+
+    // verify events
+    let events = e.events().all();
+    let tx_events = vec![&e, events.last().unwrap()];
+    assert_eq!(
+        tx_events,
+        vec![
+            &e,
+            (
+                govenor_address.clone(),
+                (Symbol::new(&e, "proposal_canceled"), proposal_id).into_val(&e),
+                ().into_val(&e)
+            )
+        ]
+    );
 }
 
 #[test]
@@ -90,23 +79,15 @@ fn test_cancel_nonexistent_proposal() {
     let e = Env::default();
     e.mock_all_auths();
     e.set_default_info();
+
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let (token_address, token_client) = create_stellar_token(&e, &bombadil);
-    let (votes_address, votes_client) = create_token_votes(&e, &token_address);
-    let (govenor_address, governor_client, _) = create_govenor(&e, &votes_address);
+    let (token_address, _) = create_stellar_token(&e, &bombadil);
+    let (votes_address, _) = create_token_votes(&e, &token_address);
+    let settings = default_governor_settings();
+    let (_, governor_client) = create_governor(&e, &votes_address, &settings);
 
-    let samwise_mint_amount: i128 = 10_000_000;
-    token_client.mint(&samwise, &samwise_mint_amount);
-    votes_client.deposit_for(&samwise, &samwise_mint_amount);
-
-    let proposal_id = e.as_contract(&govenor_address, || {
-        let proposal_id: u32 = storage::get_proposal_id(&e);
-        return proposal_id;
-    });
-
-    e.mock_all_auths();
-    governor_client.cancel(&samwise.clone(), &proposal_id);
+    governor_client.cancel(&samwise, &1);
 }
 
 #[test]
@@ -119,48 +100,20 @@ fn test_cancel_proposal_active() {
     let samwise = Address::generate(&e);
     let (token_address, token_client) = create_stellar_token(&e, &bombadil);
     let (votes_address, votes_client) = create_token_votes(&e, &token_address);
-    let (govenor_address, governor_client, _) = create_govenor(&e, &votes_address);
+    let settings = default_governor_settings();
+    let (_, governor_client) = create_governor(&e, &votes_address, &settings);
 
     let samwise_mint_amount: i128 = 10_000_000;
     token_client.mint(&samwise, &samwise_mint_amount);
     votes_client.deposit_for(&samwise, &samwise_mint_amount);
 
-    let calldata = Calldata {
-        contract_id: Address::generate(&e),
-        function: Symbol::new(&e, "test"),
-        args: (1, 2, 3).into_val(&e),
-    };
-    let sub_calldata = vec![
-        &e,
-        SubCalldata {
-            contract_id: Address::generate(&e),
-            function: Symbol::new(&e, "test"),
-            args: (1, 2, 3).into_val(&e),
-            sub_auth: vec![&e],
-        },
-    ];
-    let title = String::from_str(&e, "Test Title");
-    let description = String::from_str(&e, "Test Description");
+    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
 
-    let proposal_id = e.as_contract(&govenor_address, || {
-        let proposal_id: u32 = storage::get_proposal_id(&e);
-        storage::set_proposal(
-            &e,
-            &proposal_id,
-            &Proposal {
-                id: proposal_id,
-                title,
-                description,
-                proposer: samwise.clone(),
-                calldata,
-                sub_calldata,
-                vote_start: 0,
-                vote_end: 1000,
-            },
-        );
-        storage::set_proposal_status(&e, &proposal_id, &ProposalStatus::Active);
-        return proposal_id;
-    });
+    // setup a proposal, vote to make it active
+    let proposal_id =
+        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    e.jump_with_sequence(settings.vote_delay);
+    governor_client.vote(&samwise, &proposal_id, &2);
 
-    governor_client.cancel(&samwise.clone(), &proposal_id);
+    governor_client.cancel(&samwise, &proposal_id);
 }

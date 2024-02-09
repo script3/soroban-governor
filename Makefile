@@ -6,6 +6,7 @@ test: build
 build:
 	cargo rustc --manifest-path=contracts/votes/Cargo.toml --crate-type=cdylib --target=wasm32-unknown-unknown --release
 	cargo rustc --manifest-path=contracts/governor/Cargo.toml --crate-type=cdylib --target=wasm32-unknown-unknown --release
+	cargo rustc --manifest-path=contracts/mock-subcall/Cargo.toml --crate-type=cdylib --target=wasm32-unknown-unknown --release
 
 	mkdir -p target/wasm32-unknown-unknown/optimized
 	soroban contract optimize \
