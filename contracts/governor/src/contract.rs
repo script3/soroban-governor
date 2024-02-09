@@ -6,7 +6,7 @@ use soroban_sdk::{
 };
 
 use crate::{
-    constants::{BPS_SCALAR, MAX_VOTE_PERIOD},
+    constants::{BPS_SCALAR, MAX_PROPOSAL_LIFETIME, MAX_VOTE_PERIOD},
     dependencies::VotesClient,
     errors::GovernorError,
     events::GovernorEvents,
@@ -27,7 +27,10 @@ impl Governor for GovernorContract {
         if storage::get_is_init(&e) {
             panic_with_error!(&e, GovernorError::AlreadyInitializedError);
         }
-        if settings.vote_delay + settings.vote_period + settings.timelock > MAX_VOTE_PERIOD {
+        if settings.vote_period > MAX_VOTE_PERIOD {
+            panic_with_error!(&e, GovernorError::InvalidSettingsError)
+        }
+        if settings.vote_delay + settings.vote_period + settings.timelock > MAX_PROPOSAL_LIFETIME {
             panic_with_error!(&e, GovernorError::InvalidSettingsError)
         }
 
