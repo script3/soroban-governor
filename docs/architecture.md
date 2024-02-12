@@ -3,7 +3,7 @@ Soroban Governor is a comprehensive governance framework based on the [OpenZeppe
 
 ## Overview
 
-Soroban Governor is made up of two primary contracts: Governor and Voter. The Governor is the core contract that is responsible for proposal and treasury management. The Voter is an extension contract that manages voting power and delegation. The protocol is purposefully designed such that the DAO token is a Stellar Asset, but the Voter contract can be used with any CAP-41 compliant token.
+Soroban Governor is made up of two primary contracts: Governor and Voter. The Governor is the core contract that is responsible for proposal and treasury management. The Voter is an extension token contract that manages voting power and delegation. The protocol is purposefully designed such that the DAO token is a Stellar Asset, but the Voter contract can be used with any CAP-41 compliant token.
 
 ### System Diagram
 
@@ -35,27 +35,26 @@ The Governor manages a handful of parameters that define how the proposal flow i
 Protocol Requirements:
 * Max Life
     * The max life of a proposal must be under 21 days, that is, the time from creation to execution must occur in at most 21 days. This is checked by totaling the values of `vote delay`, `vote period`, and `timelock`. This restriction is due to ensure proposals and vote checkpoints can be safely stored in temporary storage, significantly reducing cost.
+* Max `vote period`
+    * The max vote period of a proposal is 7 days. This ensures the Votes contract does not need to track an unnecessary amount of voting checkpoints.
 
 ### Proposal
 
 A proposal is a set of calldata and metadata that users are able to vote on. Upon creation, a vote start window is created `vote delay` seconds in the future. Due to Soroban's cheap temporary storage and the proposals definite life span, all relevant information for a proposal is stored on chain to allow all parties a simple way to fetch and analyze proposal contents.
 
 **Proposal Contents:**
-* calldata `Vec<Vec<Val>>`
-    * A Vector of functions to call on execution
-* sub_calldata `Vec<Vec<Val>>`
-    * A vector of `SubContractInvocation` calldata to create contract authorization objects for
+* calldata `Calldata`
+    * The calldata of a function to execute (contract, function, arguments).
+* sub_calldata `Vec<SubCalldata>`
+    * A vector of `SubCalldata` to create any required authorizations on behalf of the Governor contract for execution.
 * description `String`
-    * A description of the proposal
-    * TODO: Determine if storing this all in temporary storage is cheap enough of if structured data will need to be stored in IPFS instead, and determine a consistent structure for frontends to consume
+    * A description of the proposal (supports Markdown formatting).
 * proposer `Address`
-    * The user who created the proposal
-* vote_start `Timestamp`
-    * The ledger timestamp where votes will be fetched from and when voting can begin
-* vote_end `Timestamp`
-    * The ledger timestamp voting will close at
-
-TODO: Determine if calling multiple contracts will be significantly more complicated than calling a single contract. Multi-calls can be encoded in deployed WASM contracts if required. If so, reduce interface to only a single Vec for both `calldata` and `sub_calldata`.
+    * The user who created the proposal.
+* vote_start `u64`
+    * The ledger timestamp where votes will be fetched from and when voting can begin.
+* vote_end `u64`
+    * The ledger timestamp voting will close at.
 
 ## Voter
 
@@ -69,30 +68,32 @@ This token is SEP-41 compliant and can be transferred freely. The token balance 
 
 ### Delegation
 
-A user can delegate their votes to a single address, which can be themselves. This causes votes to be tracked with checkpoints. If the user changes their delegate address, all active votes are moved from the old delegate to the new one.
+A user can delegate their votes to a single address, which be default is themselves. If the user changes their delegate address, all active votes are moved from the old delegate to the new one.
 
 If a user does not delegate, no checkpoints will be tracked and vote tokens can be traded for a significantly reduced state cost, but the tokens will not be able to be used to vote for a proposal.
+
+Delegations cannot be chained. That is, a user can only delegate their Voter token balance to another user, not any votes that have been delegated to them.
 
 ### Checkpoints
 
 A checkpoint system is designed to track important time periods from the Governor and ensure that accurate vote totals are tracked. This protects against things like a flash loan attack, where a user could gather a large amount of tokens via a flash loan, vote on a proposal, then return the tokens, effectively gathering an unfair amount of votes.
 
-The checkpoint system is defined by a relevant set of timestamps from the Governor. Each time a proposal is created, the proposal vote start time is sent to the Voter and tracked. The last 30 days of relevant timestamps are tracked in temporary storage.
+Checkpoints are stored in temporary storage, and values are stored long enough to ensure safe access of voting power history up to 7 days ago (the max vote period time).
 
-Every user with votes maintains a `Votes` persistent data entry and a `Vec<Votes>` temporary entry such that `Votes` contains:
+Every user with votes maintains a `VotingUnits` persistent data entry and a `Vec<VotingUnits>` temporary entry such that `VotingUnits` contains:
 
-Votes:
+VotingUnits:
 * amount `i128`
     * The amount of votes the user has
-* timestamp `Timestamp`
+* timestamp `u64`
     * The time this amount was updated
 
 This ensures that each user never loses their votes, and they can always be restored.
 
-When an update to a user's `votes` entry occurs (e.g. if they transfer tokens, or someone who is delegating to the user), a check is performed to see if there is any relevant timestamp between the last time `votes` was updated and now. If there is, the old `votes` entry is placed at the front the `Vec<Votes>` array, and the new `votes` entry is placed in the persistent slot so that the appropriate number of votes can be recovered for that timestamp.
+When an update to a user's `VotingUnits` entry occurs (e.g. if they transfer tokens, or someone who is delegating to the user), the old `VotingUnits` entry is placed at the front the `Vec<VotingUnits>` array, and the new `VotingUnits` entry is placed in the persistent slot.
 
-A user's votes for a given timestamp can be recovered by fetching the first `Votes` instance that can be found such that the update timestamp is less than or equal to the given timestamp.
+A user's votes for a given timestamp can be recovered by fetching the first `VotingUnits` instance that can be found such that the update timestamp is less than or equal to the given timestamp.
 
 ### Non-Stellar Asset Token
 
-The Voter can be modified to support a non-Stellar Asset by removing the `wrap`, `unwrap` and `wrap_and_delegate` functions, and extending it with any required custom features for your token.
+The Voter can be modified to support a non-Stellar Asset by removing the `deposit_for`, `withdraw_to` functions, and extending it with any required custom features for your token.
