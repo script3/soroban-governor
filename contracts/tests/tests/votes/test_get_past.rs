@@ -240,7 +240,7 @@ fn test_past_checkpoints_get_pruned() {
     assert_eq!(
         votes_client.get_past_total_supply(&t_minus_9_days),
         deposit_amount_frodo + deposit_amount_samwise
-    ); // pruned - BUG
+    );
     assert_eq!(
         votes_client.get_past_total_supply(&max_vote_period_check),
         deposit_amount_frodo + deposit_amount_samwise
