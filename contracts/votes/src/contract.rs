@@ -154,9 +154,9 @@ impl Votes for TokenVotes {
             return cur_supply.amount;
         }
         let supply_checkpoints = storage::get_total_supply_checkpoints(&e);
-        let past_voting_units = upper_lookup(&supply_checkpoints, timestamp);
-        match past_voting_units {
-            Some(voting_units) => voting_units.amount,
+        let checkpoint_index = upper_lookup(&supply_checkpoints, timestamp);
+        match checkpoint_index {
+            Some(checkpoint_index) => supply_checkpoints.get_unchecked(checkpoint_index).amount,
             None => 0,
         }
     }
@@ -173,9 +173,9 @@ impl Votes for TokenVotes {
             return cur_votes.amount;
         }
         let checkpoints = storage::get_voting_units_checkpoints(&e, &user);
-        let past_voting_units = upper_lookup(&checkpoints, timestamp);
-        match past_voting_units {
-            Some(voting_units) => voting_units.amount,
+        let checkpoint_index = upper_lookup(&checkpoints, timestamp);
+        match checkpoint_index {
+            Some(checkpoint_index) => checkpoints.get_unchecked(checkpoint_index).amount,
             None => 0,
         }
     }

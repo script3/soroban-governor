@@ -7,6 +7,8 @@ pub(crate) const DAY_IN_LEDGERS: u32 = 17280;
 pub(crate) const INSTANCE_BUMP_AMOUNT: u32 = 8 * DAY_IN_LEDGERS;
 pub(crate) const INSTANCE_LIFETIME_THRESHOLD: u32 = INSTANCE_BUMP_AMOUNT - DAY_IN_LEDGERS;
 
+pub(crate) const MAX_VOTE_CHECKPOINT_LEDGERS: u32 = INSTANCE_BUMP_AMOUNT;
+
 pub(crate) const BALANCE_BUMP_AMOUNT: u32 = 31 * DAY_IN_LEDGERS - 1;
 pub(crate) const BALANCE_LIFETIME_THRESHOLD: u32 = BALANCE_BUMP_AMOUNT - DAY_IN_LEDGERS;
 
@@ -92,12 +94,8 @@ fn get_temporary_default<K: IntoVal<Env, Val>, V: TryFromVal<Env, Val>, F: FnOnc
     e: &Env,
     key: &K,
     default: F,
-    ledgers_to_live: u32,
 ) -> V {
     if let Some(result) = e.storage().temporary().get::<K, V>(key) {
-        e.storage()
-            .temporary()
-            .extend_ttl(key, ledgers_to_live, ledgers_to_live);
         result
     } else {
         default()
@@ -263,33 +261,38 @@ pub fn set_allowance(
 // Total Supply Checkpoints
 
 pub fn get_total_supply_checkpoints(e: &Env) -> Vec<VotingUnits> {
-    get_temporary_default(
-        e,
-        &TOTAL_SUPPLY_CHECK_KEY,
-        || Vec::new(&e),
-        BALANCE_BUMP_AMOUNT,
-    )
+    get_temporary_default(e, &TOTAL_SUPPLY_CHECK_KEY, || Vec::new(&e))
 }
 
 pub fn set_total_supply_checkpoints(e: &Env, balance: &Vec<VotingUnits>) {
     e.storage()
         .temporary()
         .set(&TOTAL_SUPPLY_CHECK_KEY, balance);
+    // Checkpoints only need to exist for at least 7 days to ensure that correct
+    // vote periods can be tracked for the entire max voting period of 7 days.
+    // TTL is 8 days of ledgers, providing some wiggle room for fast ledgers.
+    e.storage().temporary().extend_ttl(
+        &TOTAL_SUPPLY_CHECK_KEY,
+        MAX_VOTE_CHECKPOINT_LEDGERS,
+        MAX_VOTE_CHECKPOINT_LEDGERS,
+    );
 }
 
 // Vote Units Checkpoints
 
 pub fn get_voting_units_checkpoints(e: &Env, address: &Address) -> Vec<VotingUnits> {
-    get_temporary_default(
-        e,
-        &DataKey::VotesCheck(address.clone()),
-        || Vec::new(&e),
-        BALANCE_BUMP_AMOUNT,
-    )
+    get_temporary_default(e, &DataKey::VotesCheck(address.clone()), || Vec::new(&e))
 }
 
 pub fn set_voting_units_checkpoints(e: &Env, address: &Address, balance: &Vec<VotingUnits>) {
-    e.storage()
-        .temporary()
-        .set(&DataKey::VotesCheck(address.clone()), balance);
+    let key = DataKey::VotesCheck(address.clone());
+    e.storage().temporary().set(&key, balance);
+    // Checkpoints only need to exist for at least 7 days to ensure that correct
+    // vote periods can be tracked for the entire max voting period of 7 days.
+    // Instance bump amount is 8 days, providing some wiggle room for fast ledgers.
+    e.storage().temporary().extend_ttl(
+        &key,
+        MAX_VOTE_CHECKPOINT_LEDGERS,
+        MAX_VOTE_CHECKPOINT_LEDGERS,
+    );
 }

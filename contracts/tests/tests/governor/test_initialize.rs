@@ -64,3 +64,15 @@ fn test_initalize_proprosal_exceeds_time_length() {
     };
     govenor.initialize(&votes, &settings);
 }
+
+#[test]
+#[should_panic(expected = "Error(Contract, #200)")]
+fn test_initalize_proprosal_exceeds_vote_period() {
+    let e = Env::default();
+    let address = e.register_contract(None, GovernorContract {});
+    let govenor: GovernorContractClient<'_> = GovernorContractClient::new(&e, &address);
+    let votes = Address::generate(&e);
+    let mut settings = default_governor_settings();
+    settings.vote_period = 7 * 24 * 60 * 60 + 1;
+    govenor.initialize(&votes, &settings);
+}

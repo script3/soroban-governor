@@ -13,7 +13,7 @@ const ONE_DAY_LEDGERS: u32 = 17280; // assumes 5 seconds per ledger on average
 const LEDGER_THRESHOLD_SHARED: u32 = 14 * ONE_DAY_LEDGERS;
 const LEDGER_BUMP_SHARED: u32 = 15 * ONE_DAY_LEDGERS;
 const LEDGER_THRESHOLD_PROPOSAL: u32 = 30 * ONE_DAY_LEDGERS;
-const LEDGER_BUMP_PROPOSAL: u32 = 31 * ONE_DAY_LEDGERS; // ~ 14 days
+const LEDGER_BUMP_PROPOSAL: u32 = 31 * ONE_DAY_LEDGERS;
 
 //********** Storage Keys **********//
 
