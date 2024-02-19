@@ -1,18 +1,12 @@
 use sep_41_token::{Token, TokenClient, TokenEvents};
-use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Env, String};
+use soroban_sdk::{
+    contract, contractimpl, panic_with_error, unwrap::UnwrapOptimized, Address, Env, String,
+};
 
 use crate::{
-    allowance::{create_allowance, spend_allowance},
-    balance::{receive_balance, spend_balance},
-    checkpoints::upper_lookup,
-    error::TokenVotesError,
-    events::VoterTokenEvents,
-    storage::{self, set_delegate, TokenMetadata, VotingUnits},
-    validation::require_nonnegative_amount,
-    votes::Votes,
-    voting_units::{
+    allowance::{create_allowance, spend_allowance}, balance::{receive_balance, spend_balance}, checkpoints::Checkpoint, constants::MAX_CHECKPOINT_AGE_LEDGERS, error::TokenVotesError, events::VoterTokenEvents, storage::{self, set_delegate, TokenMetadata}, validation::require_nonnegative_amount, votes::Votes, voting_units::{
         burn_voting_units, mint_voting_units, move_voting_units, transfer_voting_units,
-    },
+    }
 };
 
 #[contract]
@@ -114,7 +108,7 @@ impl Token for TokenVotes {
 #[contractimpl]
 /// Implementation of the Votes trait to allow for tracking votes
 impl Votes for TokenVotes {
-    fn initialize(e: Env, token: Address) {
+    fn initialize(e: Env, token: Address, governor: Address) {
         if storage::get_is_init(&e) {
             panic_with_error!(e, TokenVotesError::AlreadyInitializedError);
         }
@@ -132,51 +126,96 @@ impl Votes for TokenVotes {
         };
         storage::set_metadata(&e, &token_metadata);
         storage::set_token(&e, &token);
-        storage::set_total_supply(
-            &e,
-            &VotingUnits {
-                amount: 0,
-                timestamp: e.ledger().timestamp(),
-            },
-        );
+        storage::set_governor(&e, &governor);
         storage::set_is_init(&e);
     }
 
     fn total_supply(e: Env) -> i128 {
         storage::extend_instance(&e);
-        storage::get_total_supply(&e).amount
+        storage::get_total_supply(&e).to_checkpoint_data().1
     }
 
-    fn get_past_total_supply(e: Env, timestamp: u64) -> i128 {
+    fn set_vote_sequence(e: Env, sequence: u32) {
+        storage::get_governor(&e).require_auth();
+        storage::extend_instance(&e);
+
+        let mut vote_ledgers = storage::get_vote_ledgers(&e);
+        let len = vote_ledgers.len();
+        let ledger_cutoff = e
+            .ledger()
+            .sequence()
+            .checked_sub(MAX_CHECKPOINT_AGE_LEDGERS);
+        if len > 0 && ledger_cutoff.is_some() {
+            // if the `ledger_cutoff` is found or if the index in which it could
+            // be inserted is returned, we remove everything before it
+            let result = vote_ledgers.binary_search(ledger_cutoff.unwrap_optimized());
+            let index = match result {
+                Ok(index) => index,
+                Err(index) => index,
+            };
+            // check if there is anything to remove before doing the work
+            if index > 0 {
+                vote_ledgers = vote_ledgers.slice(index..len);
+            }
+        }
+        vote_ledgers.push_back(sequence);
+        storage::set_vote_ledgers(&e, &vote_ledgers);
+    }
+
+    fn get_past_total_supply(e: Env, sequence: u32) -> i128 {
         storage::extend_instance(&e);
         let cur_supply = storage::get_total_supply(&e);
-        if cur_supply.timestamp <= timestamp {
-            return cur_supply.amount;
+        let (cur_seq, cur_supply) = cur_supply.to_checkpoint_data();
+        if cur_seq <= sequence {
+            return cur_supply;
         }
         let supply_checkpoints = storage::get_total_supply_checkpoints(&e);
-        let checkpoint_index = upper_lookup(&supply_checkpoints, timestamp);
-        match checkpoint_index {
-            Some(checkpoint_index) => supply_checkpoints.get_unchecked(checkpoint_index).amount,
-            None => 0,
+        match supply_checkpoints.binary_search(u128::from_checkpoint_data(&e, sequence, 0)) {
+            Ok(index) => {
+                supply_checkpoints
+                    .get_unchecked(index)
+                    .to_checkpoint_data()
+                    .1
+            }
+            Err(index) => {
+                if index == 0 {
+                    // no entry less than or equal to the requested sequence
+                    0
+                } else {
+                    supply_checkpoints
+                        .get_unchecked(index - 1)
+                        .to_checkpoint_data()
+                        .1
+                }
+            }
         }
     }
 
     fn get_votes(e: Env, account: Address) -> i128 {
         storage::extend_instance(&e);
-        storage::get_voting_units(&e, &account).amount
+        storage::get_voting_units(&e, &account)
+            .to_checkpoint_data()
+            .1
     }
 
-    fn get_past_votes(e: Env, user: Address, timestamp: u64) -> i128 {
+    fn get_past_votes(e: Env, user: Address, sequence: u32) -> i128 {
         storage::extend_instance(&e);
         let cur_votes = storage::get_voting_units(&e, &user);
-        if cur_votes.timestamp <= timestamp {
-            return cur_votes.amount;
+        let (cur_seq, cur_amount) = cur_votes.to_checkpoint_data();
+        if cur_seq <= sequence {
+            return cur_amount;
         }
         let checkpoints = storage::get_voting_units_checkpoints(&e, &user);
-        let checkpoint_index = upper_lookup(&checkpoints, timestamp);
-        match checkpoint_index {
-            Some(checkpoint_index) => checkpoints.get_unchecked(checkpoint_index).amount,
-            None => 0,
+        match checkpoints.binary_search(u128::from_checkpoint_data(&e, sequence, 0)) {
+            Ok(index) => checkpoints.get_unchecked(index).to_checkpoint_data().1,
+            Err(index) => {
+                if index == 0 {
+                    // no entry less than or equal to the requested sequence
+                    0
+                } else {
+                    checkpoints.get_unchecked(index - 1).to_checkpoint_data().1
+                }
+            }
         }
     }
 
@@ -194,8 +233,15 @@ impl Votes for TokenVotes {
         }
         let dest_delegate = storage::get_delegate(&e, &delegatee);
         let balance = storage::get_balance(&e, &account);
+        let vote_ledgers = storage::get_vote_ledgers(&e);
         if balance > 0 {
-            move_voting_units(&e, Some(&cur_delegate), Some(&dest_delegate), balance);
+            move_voting_units(
+                &e,
+                &vote_ledgers,
+                Some(&cur_delegate),
+                Some(&dest_delegate),
+                balance,
+            );
         }
         set_delegate(&e, &account, &delegatee);
 

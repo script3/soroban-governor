@@ -15,10 +15,12 @@ pub(crate) const BALANCE_LIFETIME_THRESHOLD: u32 = BALANCE_BUMP_AMOUNT - DAY_IN_
 //********** Storage Keys **********//
 
 const IS_INIT_KEY: Symbol = symbol_short!("IsInit");
+const GOV_KEY: Symbol = symbol_short!("GOV");
 const TOKEN_KEY: Symbol = symbol_short!("TOKEN");
 const METADATA_KEY: Symbol = symbol_short!("METADATA");
 const TOTAL_SUPPLY_KEY: Symbol = symbol_short!("SUPPLY");
 const TOTAL_SUPPLY_CHECK_KEY: Symbol = symbol_short!("SPLYCHECK");
+const VOTE_LEDGERS_KEY: Symbol = symbol_short!("VOTE_SEQ");
 
 #[derive(Clone)]
 #[contracttype]
@@ -51,15 +53,6 @@ pub struct TokenMetadata {
     pub decimal: u32,
     pub name: String,
     pub symbol: String,
-}
-
-#[derive(Clone)]
-#[contracttype]
-pub struct VotingUnits {
-    /// The number of votes available
-    pub amount: i128,
-    /// The timestamp when the voting units valid
-    pub timestamp: u64,
 }
 
 //********** Storage Utils **********//
@@ -120,6 +113,16 @@ pub fn set_is_init(e: &Env) {
 
 // Token
 
+pub fn get_governor(e: &Env) -> Address {
+    e.storage().instance().get(&GOV_KEY).unwrap_optimized()
+}
+
+pub fn set_governor(e: &Env, address: &Address) {
+    e.storage().instance().set(&GOV_KEY, address);
+}
+
+// Token
+
 pub fn get_token(e: &Env) -> Address {
     e.storage().instance().get(&TOKEN_KEY).unwrap_optimized()
 }
@@ -142,21 +145,18 @@ pub fn set_metadata(e: &Env, metadata: &TokenMetadata) {
 
 // Total Supply
 
-pub fn get_total_supply(e: &Env) -> VotingUnits {
+pub fn get_total_supply(e: &Env) -> u128 {
     get_persistent_default(
         e,
         &TOTAL_SUPPLY_KEY,
-        || VotingUnits {
-            amount: 0,
-            timestamp: 0,
-        },
+        || 0,
         BALANCE_LIFETIME_THRESHOLD,
         BALANCE_BUMP_AMOUNT,
     )
 }
 
-pub fn set_total_supply(e: &Env, supply: &VotingUnits) {
-    e.storage().persistent().set(&TOTAL_SUPPLY_KEY, supply);
+pub fn set_total_supply(e: &Env, checkpoint: &u128) {
+    e.storage().persistent().set(&TOTAL_SUPPLY_KEY, checkpoint);
 }
 
 // Balance
@@ -179,23 +179,20 @@ pub fn set_balance(e: &Env, address: &Address, balance: &i128) {
 
 // Vote Units
 
-pub fn get_voting_units(e: &Env, address: &Address) -> VotingUnits {
+pub fn get_voting_units(e: &Env, address: &Address) -> u128 {
     get_persistent_default(
         e,
         &DataKey::Votes(address.clone()),
-        || VotingUnits {
-            amount: 0,
-            timestamp: 0,
-        },
+        || 0,
         BALANCE_LIFETIME_THRESHOLD,
         BALANCE_BUMP_AMOUNT,
     )
 }
 
-pub fn set_voting_units(e: &Env, address: &Address, balance: &VotingUnits) {
+pub fn set_voting_units(e: &Env, address: &Address, checkpoint: &u128) {
     e.storage()
         .persistent()
-        .set(&DataKey::Votes(address.clone()), balance);
+        .set(&DataKey::Votes(address.clone()), checkpoint);
 }
 
 // Delegate
@@ -258,13 +255,28 @@ pub fn set_allowance(
     }
 }
 
+// Vote Units Checkpoints
+
+pub fn get_vote_ledgers(e: &Env) -> Vec<u32> {
+    get_temporary_default(e, &VOTE_LEDGERS_KEY, || Vec::new(&e))
+}
+
+pub fn set_vote_ledgers(e: &Env, vote_ledgers: &Vec<u32>) {
+    e.storage().temporary().set(&VOTE_LEDGERS_KEY, vote_ledgers);
+    e.storage().temporary().extend_ttl(
+        &VOTE_LEDGERS_KEY,
+        MAX_VOTE_CHECKPOINT_LEDGERS,
+        MAX_VOTE_CHECKPOINT_LEDGERS,
+    );
+}
+
 // Total Supply Checkpoints
 
-pub fn get_total_supply_checkpoints(e: &Env) -> Vec<VotingUnits> {
+pub fn get_total_supply_checkpoints(e: &Env) -> Vec<u128> {
     get_temporary_default(e, &TOTAL_SUPPLY_CHECK_KEY, || Vec::new(&e))
 }
 
-pub fn set_total_supply_checkpoints(e: &Env, balance: &Vec<VotingUnits>) {
+pub fn set_total_supply_checkpoints(e: &Env, balance: &Vec<u128>) {
     e.storage()
         .temporary()
         .set(&TOTAL_SUPPLY_CHECK_KEY, balance);
@@ -280,11 +292,11 @@ pub fn set_total_supply_checkpoints(e: &Env, balance: &Vec<VotingUnits>) {
 
 // Vote Units Checkpoints
 
-pub fn get_voting_units_checkpoints(e: &Env, address: &Address) -> Vec<VotingUnits> {
+pub fn get_voting_units_checkpoints(e: &Env, address: &Address) -> Vec<u128> {
     get_temporary_default(e, &DataKey::VotesCheck(address.clone()), || Vec::new(&e))
 }
 
-pub fn set_voting_units_checkpoints(e: &Env, address: &Address, balance: &Vec<VotingUnits>) {
+pub fn set_voting_units_checkpoints(e: &Env, address: &Address, balance: &Vec<u128>) {
     let key = DataKey::VotesCheck(address.clone());
     e.storage().temporary().set(&key, balance);
     // Checkpoints only need to exist for at least 7 days to ensure that correct
