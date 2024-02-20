@@ -43,7 +43,10 @@ pub fn burn_voting_units(e: &Env, from: &Address, amount: i128) {
         if supply < 0 {
             panic_with_error!(e, TokenVotesError::InsufficientVotesError);
         }
-        storage::set_total_supply(e, &total_supply_checkpoint);
+        storage::set_total_supply(
+            e,
+            &u128::from_checkpoint_data(e, e.ledger().sequence(), supply),
+        );
 
         let vote_ledgers = storage::get_vote_ledgers(e);
         add_supply_checkpoint(e, &vote_ledgers, total_supply_checkpoint);

@@ -1,9 +1,6 @@
 use soroban_sdk::{panic_with_error, Address, Env, Vec};
 
-use crate::{
-    error::TokenVotesError,
-    storage
-};
+use crate::{error::TokenVotesError, storage};
 
 pub trait Checkpoint {
     /// Convert a timestamp and amount to a Checkpoint
@@ -46,10 +43,7 @@ impl Checkpoint for u128 {
     fn to_checkpoint_data(self) -> (u32, i128) {
         let sequence = (self >> 96) as u32;
         let amount = (self & 0x00000000_FFFFFFFF_FFFFFFFF_FFFFFFFF) as i128;
-        (
-            sequence,
-            amount,
-        )
+        (sequence, amount)
     }
 }
 
@@ -134,7 +128,7 @@ fn add_checkpoint(
             // /**
             //  * TODO
             //  * solve how to prune 12 but not 8
-            //  * 
+            //  *
             //  * time: 21
             //  * vote_ledgers: [10, 20]\
             //  *              * checkpoints: [8, 12]
@@ -176,7 +170,7 @@ fn add_checkpoint(
                 } else {
                     index - 1
                 }
-            },
+            }
         };
         if lower_bound_inclusive != 0 {
             *checkpoints = checkpoints.slice(lower_bound_inclusive..len);
@@ -192,7 +186,8 @@ mod tests {
 
     use super::*;
     use soroban_sdk::{
-        testutils::{Address as _, Ledger, LedgerInfo}, Address, vec, Env, Vec
+        testutils::{Address as _, Ledger, LedgerInfo},
+        vec, Address, Env, Vec,
     };
 
     const DEFAULT_LEDGER_INFO: LedgerInfo = LedgerInfo {
@@ -262,7 +257,6 @@ mod tests {
         });
     }
 
-
     #[test]
     fn test_add_user_checkpoint_no_write_empty() {
         let e = Env::default();
@@ -274,7 +268,8 @@ mod tests {
         let samwise = Address::generate(&e);
 
         e.as_contract(&votes, || {
-            let to_add = u128::from_checkpoint_data(&e, DEFAULT_LEDGER_INFO.sequence_number - 10, 100);
+            let to_add =
+                u128::from_checkpoint_data(&e, DEFAULT_LEDGER_INFO.sequence_number - 10, 100);
             add_user_checkpoint(&e, &voting_ledgers, &samwise, to_add);
 
             let user_checkpoints = storage::get_voting_units_checkpoints(&e, &samwise);
@@ -287,14 +282,22 @@ mod tests {
         let e = Env::default();
         e.ledger().set(DEFAULT_LEDGER_INFO);
 
-        let voting_ledgers = vec![&e, DEFAULT_LEDGER_INFO.sequence_number - 300, DEFAULT_LEDGER_INFO.sequence_number - 100];
-        let checkpoints = vec![&e, u128::from_checkpoint_data(&e, DEFAULT_LEDGER_INFO.sequence_number - 300, 0)];
+        let voting_ledgers = vec![
+            &e,
+            DEFAULT_LEDGER_INFO.sequence_number - 300,
+            DEFAULT_LEDGER_INFO.sequence_number - 100,
+        ];
+        let checkpoints = vec![
+            &e,
+            u128::from_checkpoint_data(&e, DEFAULT_LEDGER_INFO.sequence_number - 300, 0),
+        ];
 
         let votes = e.register_contract(None, TokenVotes {});
 
         e.as_contract(&votes, || {
             storage::set_total_supply_checkpoints(&e, &checkpoints);
-            let to_add = u128::from_checkpoint_data(&e, DEFAULT_LEDGER_INFO.sequence_number - 200, 100);
+            let to_add =
+                u128::from_checkpoint_data(&e, DEFAULT_LEDGER_INFO.sequence_number - 200, 100);
             add_supply_checkpoint(&e, &voting_ledgers, to_add);
 
             let supply_checkpoints = storage::get_total_supply_checkpoints(&e);
@@ -303,14 +306,16 @@ mod tests {
         });
     }
 
-
     #[test]
     fn test_add_supply_checkpoint_no_write_empty() {
         let e = Env::default();
         e.ledger().set(DEFAULT_LEDGER_INFO);
 
         let voting_ledgers = vec![&e];
-        let checkpoints = vec![&e, u128::from_checkpoint_data(&e, DEFAULT_LEDGER_INFO.sequence_number - 300, 0)];
+        let checkpoints = vec![
+            &e,
+            u128::from_checkpoint_data(&e, DEFAULT_LEDGER_INFO.sequence_number - 300, 0),
+        ];
 
         let votes = e.register_contract(None, TokenVotes {});
 
@@ -337,7 +342,11 @@ mod tests {
         let mut checkpoints = Vec::<u128>::new(&e);
         let first = u128::from_checkpoint_data(&e, ledger, 123);
         checkpoints.push_back(first);
-        checkpoints.push_back(u128::from_checkpoint_data(&e, ledger + 3 * ONE_DAY_LEDGERS - 1, 456));
+        checkpoints.push_back(u128::from_checkpoint_data(
+            &e,
+            ledger + 3 * ONE_DAY_LEDGERS - 1,
+            456,
+        ));
 
         let mut new_ledger_info = DEFAULT_LEDGER_INFO.clone();
         new_ledger_info.sequence_number += 8 * ONE_DAY_LEDGERS;
@@ -365,7 +374,11 @@ mod tests {
         voting_ledgers.push_back(ledger + 5 * ONE_DAY_LEDGERS);
         let mut checkpoints = Vec::<u128>::new(&e);
         checkpoints.push_back(u128::from_checkpoint_data(&e, ledger, 123));
-        checkpoints.push_back(u128::from_checkpoint_data(&e, ledger + 3 * ONE_DAY_LEDGERS - 1, 456));
+        checkpoints.push_back(u128::from_checkpoint_data(
+            &e,
+            ledger + 3 * ONE_DAY_LEDGERS - 1,
+            456,
+        ));
 
         let mut new_ledger_info = DEFAULT_LEDGER_INFO.clone();
         new_ledger_info.sequence_number += 8 * ONE_DAY_LEDGERS;
@@ -379,7 +392,10 @@ mod tests {
         let vote_last = checkpoints.last_unchecked();
         assert_eq!(vote_last.to_checkpoint_data(), to_add.to_checkpoint_data());
         let vote_first = checkpoints.first_unchecked();
-        assert_eq!(vote_first.to_checkpoint_data(), (ledger + 3 * ONE_DAY_LEDGERS - 1, 456));
+        assert_eq!(
+            vote_first.to_checkpoint_data(),
+            (ledger + 3 * ONE_DAY_LEDGERS - 1, 456)
+        );
     }
 
     #[test]
@@ -392,8 +408,16 @@ mod tests {
         voting_ledgers.push_back(ledger + 3 * ONE_DAY_LEDGERS);
         voting_ledgers.push_back(ledger + 5 * ONE_DAY_LEDGERS);
         let mut checkpoints = Vec::<u128>::new(&e);
-        checkpoints.push_back(u128::from_checkpoint_data(&e, ledger + 3 * ONE_DAY_LEDGERS - 1, 456));
-        checkpoints.push_back(u128::from_checkpoint_data(&e, ledger + 3 * ONE_DAY_LEDGERS + 100, 123));
+        checkpoints.push_back(u128::from_checkpoint_data(
+            &e,
+            ledger + 3 * ONE_DAY_LEDGERS - 1,
+            456,
+        ));
+        checkpoints.push_back(u128::from_checkpoint_data(
+            &e,
+            ledger + 3 * ONE_DAY_LEDGERS + 100,
+            123,
+        ));
 
         let mut new_ledger_info = DEFAULT_LEDGER_INFO.clone();
         new_ledger_info.sequence_number += 8 * ONE_DAY_LEDGERS;
@@ -407,7 +431,10 @@ mod tests {
         let vote_last = checkpoints.last_unchecked();
         assert_eq!(vote_last.to_checkpoint_data(), to_add.to_checkpoint_data());
         let vote_first = checkpoints.first_unchecked();
-        assert_eq!(vote_first.to_checkpoint_data(), (ledger + 3 * ONE_DAY_LEDGERS - 1, 456));
+        assert_eq!(
+            vote_first.to_checkpoint_data(),
+            (ledger + 3 * ONE_DAY_LEDGERS - 1, 456)
+        );
     }
 
     #[test]
@@ -420,8 +447,16 @@ mod tests {
         voting_ledgers.push_back(ledger + 3 * ONE_DAY_LEDGERS);
         voting_ledgers.push_back(ledger + 5 * ONE_DAY_LEDGERS);
         let mut checkpoints = Vec::<u128>::new(&e);
-        checkpoints.push_back(u128::from_checkpoint_data(&e, ledger + 3 * ONE_DAY_LEDGERS - 1, 456));
-        checkpoints.push_back(u128::from_checkpoint_data(&e, ledger + 3 * ONE_DAY_LEDGERS + 100, 123));
+        checkpoints.push_back(u128::from_checkpoint_data(
+            &e,
+            ledger + 3 * ONE_DAY_LEDGERS - 1,
+            456,
+        ));
+        checkpoints.push_back(u128::from_checkpoint_data(
+            &e,
+            ledger + 3 * ONE_DAY_LEDGERS + 100,
+            123,
+        ));
 
         let mut new_ledger_info = DEFAULT_LEDGER_INFO.clone();
         new_ledger_info.sequence_number += 8 * ONE_DAY_LEDGERS;
@@ -435,6 +470,9 @@ mod tests {
         let vote_last = checkpoints.last_unchecked();
         assert_eq!(vote_last.to_checkpoint_data(), to_add.to_checkpoint_data());
         let vote_first = checkpoints.first_unchecked();
-        assert_eq!(vote_first.to_checkpoint_data(), (ledger + 3 * ONE_DAY_LEDGERS - 1, 456));
+        assert_eq!(
+            vote_first.to_checkpoint_data(),
+            (ledger + 3 * ONE_DAY_LEDGERS - 1, 456)
+        );
     }
 }

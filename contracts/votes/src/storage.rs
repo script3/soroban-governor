@@ -157,6 +157,11 @@ pub fn get_total_supply(e: &Env) -> u128 {
 
 pub fn set_total_supply(e: &Env, checkpoint: &u128) {
     e.storage().persistent().set(&TOTAL_SUPPLY_KEY, checkpoint);
+    e.storage().persistent().extend_ttl(
+        &TOTAL_SUPPLY_KEY,
+        BALANCE_LIFETIME_THRESHOLD,
+        BALANCE_BUMP_AMOUNT,
+    );
 }
 
 // Balance
@@ -172,9 +177,11 @@ pub fn get_balance(e: &Env, address: &Address) -> i128 {
 }
 
 pub fn set_balance(e: &Env, address: &Address, balance: &i128) {
+    let key = DataKey::Balance(address.clone());
+    e.storage().persistent().set(&key, balance);
     e.storage()
         .persistent()
-        .set(&DataKey::Balance(address.clone()), balance);
+        .extend_ttl(&key, BALANCE_LIFETIME_THRESHOLD, BALANCE_BUMP_AMOUNT);
 }
 
 // Vote Units
@@ -190,9 +197,11 @@ pub fn get_voting_units(e: &Env, address: &Address) -> u128 {
 }
 
 pub fn set_voting_units(e: &Env, address: &Address, checkpoint: &u128) {
+    let key = DataKey::Votes(address.clone());
+    e.storage().persistent().set(&key, checkpoint);
     e.storage()
         .persistent()
-        .set(&DataKey::Votes(address.clone()), checkpoint);
+        .extend_ttl(&key, BALANCE_LIFETIME_THRESHOLD, BALANCE_BUMP_AMOUNT);
 }
 
 // Delegate
@@ -208,9 +217,11 @@ pub fn get_delegate(e: &Env, address: &Address) -> Address {
 }
 
 pub fn set_delegate(e: &Env, address: &Address, delegatee: &Address) {
+    let key = DataKey::Delegate(address.clone());
+    e.storage().persistent().set(&key, delegatee);
     e.storage()
         .persistent()
-        .set(&DataKey::Delegate(address.clone()), delegatee);
+        .extend_ttl(&key, BALANCE_LIFETIME_THRESHOLD, BALANCE_BUMP_AMOUNT);
 }
 
 //********** Temporary **********//
@@ -263,10 +274,11 @@ pub fn get_vote_ledgers(e: &Env) -> Vec<u32> {
 
 pub fn set_vote_ledgers(e: &Env, vote_ledgers: &Vec<u32>) {
     e.storage().temporary().set(&VOTE_LEDGERS_KEY, vote_ledgers);
+    // extend for twice the time a vote period can last
     e.storage().temporary().extend_ttl(
         &VOTE_LEDGERS_KEY,
-        MAX_VOTE_CHECKPOINT_LEDGERS,
-        MAX_VOTE_CHECKPOINT_LEDGERS,
+        MAX_VOTE_CHECKPOINT_LEDGERS * 2,
+        MAX_VOTE_CHECKPOINT_LEDGERS * 2,
     );
 }
 

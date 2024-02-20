@@ -1,15 +1,16 @@
 #[cfg(test)]
+use sep_41_token::testutils::MockTokenClient;
 use soroban_governor::types::{Calldata, ProposalStatus, SubCalldata};
+use soroban_governor::GovernorContractClient;
 use soroban_sdk::{testutils::Address as _, vec, Address, Env, IntoVal, Symbol, Vec};
+use soroban_votes::TokenVotesClient;
 use tests::{
-    common::create_stellar_token,
     env::EnvTestUtils,
     governor::{create_governor_wasm, default_governor_settings, default_proposal_data},
     mocks::create_mock_subcall_contract_wasm,
-    votes::create_token_votes_wasm,
 };
 
-const ONE_HOUR: u64 = 60 * 60;
+const ONE_HOUR: u32 = 60 * 60 / 5;
 
 #[test]
 fn test_wasm_happy_path() {
@@ -24,15 +25,17 @@ fn test_wasm_happy_path() {
     let pippin = Address::generate(&e);
     let merry = Address::generate(&e);
 
-    let (token_address, token_client) = create_stellar_token(&e, &bombadil);
-    let (votes_address, votes_client) = create_token_votes_wasm(&e, &token_address);
     let settings = default_governor_settings();
-    let (govenor_address, governor_client) = create_governor_wasm(&e, &votes_address, &settings);
+    let (governor_address, token_address, votes_address) =
+        create_governor_wasm(&e, &bombadil, &settings);
+    let token_client = MockTokenClient::new(&e, &token_address);
+    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let governor_client = GovernorContractClient::new(&e, &governor_address);
     let (subcall_address, _) =
-        create_mock_subcall_contract_wasm(&e, &token_address, &govenor_address);
+        create_mock_subcall_contract_wasm(&e, &token_address, &governor_address);
 
     let gov_balance: i128 = 123 * 10i128.pow(7);
-    token_client.mint(&govenor_address, &gov_balance);
+    token_client.mint(&governor_address, &gov_balance);
 
     // set intial votes
     let mut frodo_votes: i128 = 10_000 * 10i128.pow(7);
@@ -68,7 +71,7 @@ fn test_wasm_happy_path() {
             contract_id: token_address,
             function: Symbol::new(&e, "transfer"),
             args: (
-                govenor_address.clone(),
+                governor_address.clone(),
                 subcall_address.clone(),
                 call_amount.clone(),
             )
@@ -80,7 +83,7 @@ fn test_wasm_happy_path() {
         governor_client.propose(&frodo, &calldata, &sub_calldata, &title, &description);
 
     // pass some time - samwise delegates to frodo then transfers votes to merry. Merry mints more votes.
-    e.jump_with_sequence(settings.vote_delay - ONE_HOUR);
+    e.jump(settings.vote_delay - ONE_HOUR);
 
     votes_client.delegate(&samwise, &frodo);
     frodo_votes += samwise_votes;
@@ -102,7 +105,7 @@ fn test_wasm_happy_path() {
     assert_eq!(votes_client.total_supply(), total_votes);
 
     // start the vote period
-    e.jump_with_sequence(ONE_HOUR + 1);
+    e.jump(ONE_HOUR + 1);
 
     // merry tries to delegate votes to pippin after the delay and mint more votes
     // @dev: don't update vote trackers with changes after the vote period starts
@@ -119,11 +122,11 @@ fn test_wasm_happy_path() {
 
     // frodo votes for, pippin votes against, merry abstains
     governor_client.vote(&frodo, &proposal_id, &2);
-    e.jump_with_sequence(ONE_HOUR);
+    e.jump(ONE_HOUR);
     governor_client.vote(&pippin, &proposal_id, &1);
-    e.jump_with_sequence(ONE_HOUR);
+    e.jump(ONE_HOUR);
     governor_client.vote(&merry, &proposal_id, &0);
-    e.jump_with_sequence(ONE_HOUR);
+    e.jump(ONE_HOUR);
 
     let proposal_votes = governor_client.get_proposal_votes(&proposal_id);
     assert_eq!(proposal_votes.votes_for, frodo_votes);
@@ -131,21 +134,21 @@ fn test_wasm_happy_path() {
     assert_eq!(proposal_votes.votes_abstained, merry_votes);
 
     // close the proposal
-    e.jump_with_sequence(settings.vote_period - 3 * ONE_HOUR);
+    e.jump(settings.vote_period - 3 * ONE_HOUR);
     governor_client.close(&proposal_id);
 
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
     assert_eq!(proposal.data.status, ProposalStatus::Queued);
 
     // execute the proposal
-    e.jump_with_sequence(settings.timelock);
-    assert_eq!(token_client.balance(&govenor_address), gov_balance);
+    e.jump(settings.timelock);
+    assert_eq!(token_client.balance(&governor_address), gov_balance);
     assert_eq!(token_client.balance(&subcall_address), 0);
 
     governor_client.execute(&proposal_id);
 
     assert_eq!(
-        token_client.balance(&govenor_address),
+        token_client.balance(&governor_address),
         gov_balance - call_amount
     );
     assert_eq!(token_client.balance(&subcall_address), call_amount);

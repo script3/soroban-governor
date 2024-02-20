@@ -16,9 +16,10 @@ fn test_token_actions() {
     let user1 = Address::generate(&e);
     let user2 = Address::generate(&e);
     let user3 = Address::generate(&e);
+    let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_token_votes(&e, &token_id);
+    let (_, votes_client) = create_token_votes(&e, &token_id, &governor);
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&user1, &initial_balance);
@@ -119,9 +120,10 @@ fn test_burn() {
     let bombadil = Address::generate(&e);
     let user1 = Address::generate(&e);
     let user2 = Address::generate(&e);
+    let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_token_votes(&e, &token_id);
+    let (_, votes_client) = create_token_votes(&e, &token_id, &governor);
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&user1, &initial_balance);
@@ -182,9 +184,10 @@ fn transfer_insufficient_balance() {
     let bombadil = Address::generate(&e);
     let user1 = Address::generate(&e);
     let user2 = Address::generate(&e);
+    let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_token_votes(&e, &token_id);
+    let (_, votes_client) = create_token_votes(&e, &token_id, &governor);
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&user1, &initial_balance);
@@ -206,8 +209,10 @@ fn transfer_from_insufficient_allowance() {
     let user1 = Address::generate(&e);
     let user2 = Address::generate(&e);
     let user3 = Address::generate(&e);
+    let governor = Address::generate(&e);
+
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_token_votes(&e, &token_id);
+    let (_, votes_client) = create_token_votes(&e, &token_id, &governor);
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&user1, &initial_balance);
@@ -229,8 +234,10 @@ fn initialize_already_initialized() {
     e.set_default_info();
 
     let bombadil = Address::generate(&e);
-    let (token_id, _) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_token_votes(&e, &token_id);
+    let governor = Address::generate(&e);
 
-    votes_client.initialize(&Address::generate(&e));
+    let (token_id, _) = create_stellar_token(&e, &bombadil);
+    let (_, votes_client) = create_token_votes(&e, &token_id, &governor);
+
+    votes_client.initialize(&Address::generate(&e), &Address::generate(&e));
 }

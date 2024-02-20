@@ -4,9 +4,18 @@ use soroban_sdk::{
 };
 
 use crate::{
-    allowance::{create_allowance, spend_allowance}, balance::{receive_balance, spend_balance}, checkpoints::Checkpoint, constants::MAX_CHECKPOINT_AGE_LEDGERS, error::TokenVotesError, events::VoterTokenEvents, storage::{self, set_delegate, TokenMetadata}, validation::require_nonnegative_amount, votes::Votes, voting_units::{
+    allowance::{create_allowance, spend_allowance},
+    balance::{receive_balance, spend_balance},
+    checkpoints::Checkpoint,
+    constants::MAX_CHECKPOINT_AGE_LEDGERS,
+    error::TokenVotesError,
+    events::VoterTokenEvents,
+    storage::{self, set_delegate, TokenMetadata},
+    validation::require_nonnegative_amount,
+    votes::Votes,
+    voting_units::{
         burn_voting_units, mint_voting_units, move_voting_units, transfer_voting_units,
-    }
+    },
 };
 
 #[contract]

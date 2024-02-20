@@ -1,8 +1,8 @@
 use soroban_sdk::{symbol_short, unwrap::UnwrapOptimized, Address, Env, Symbol};
 
 const ONE_DAY_LEDGERS: u32 = 17280; // assumes 5 seconds per ledger on average
-const LEDGER_THRESHOLD_SHARED: u32 = 14 * ONE_DAY_LEDGERS;
-const LEDGER_BUMP_SHARED: u32 = 15 * ONE_DAY_LEDGERS;
+const LEDGER_THRESHOLD_SHARED: u32 = 30 * ONE_DAY_LEDGERS;
+const LEDGER_BUMP_SHARED: u32 = 31 * ONE_DAY_LEDGERS;
 
 //********** Storage Keys **********//
 

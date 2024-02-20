@@ -56,8 +56,7 @@ impl Governor for GovernorContract {
         storage::extend_instance(&e);
 
         let settings = storage::get_settings(&e);
-        let votes_client =
-            VotesClient::new(&e, &storage::get_voter_token_address(&e));
+        let votes_client = VotesClient::new(&e, &storage::get_voter_token_address(&e));
         let creater_votes = votes_client.get_votes(&creator);
         if creater_votes < settings.proposal_threshold {
             panic_with_error!(&e, GovernorError::InsufficientVotingUnitsError)
