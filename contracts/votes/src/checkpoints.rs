@@ -47,6 +47,35 @@ impl Checkpoint for u128 {
     }
 }
 
+/// Get the amount of the checkpoint that has a sequence number greater than or equal
+/// to the given sequence.
+/// 
+/// Returns 0 if no checkpoint exists that meets the criteria.
+///
+/// ### Arguments
+/// * checkpoints - The checkpoints to search
+/// * sequence - The sequence to search for
+pub fn upper_lookup(e: &Env, checkpoints: &Vec<u128>, sequence: u32) -> i128 {
+    if checkpoints.is_empty() {
+        return 0;
+    }
+
+    // search with max checkpoint value for the sequence to ensure that we catch any checkpoint
+    // with a matching sequence as less than or equal to
+    match checkpoints.binary_search(u128::from_checkpoint_data(&e, sequence, 0xFFFFFFFF_FFFFFFFF_FFFFFFFF)) {
+        Ok(index) =>  {
+            checkpoints.get_unchecked(index).to_checkpoint_data().1
+        },
+        Err(index) => {
+            if index == 0 {
+                0
+            } else {
+                checkpoints.get_unchecked(index - 1).to_checkpoint_data().1
+            }
+        }
+    }
+}
+
 /// Add "to_add" to the checkpoints vector for the user.
 ///
 /// This function assumes that the caller is setting a new value for the persistent
@@ -125,15 +154,6 @@ fn add_checkpoint(
         };
         if vote_ledger >= to_add_seq && vote_ledger < e.ledger().sequence() {
             // `to_add` is needed
-            // /**
-            //  * TODO
-            //  * solve how to prune 12 but not 8
-            //  *
-            //  * time: 21
-            //  * vote_ledgers: [10, 20]\
-            //  *              * checkpoints: [8, 12]
-            //  * to_add: 15
-            //  */
             if len == 0 {
                 checkpoints.push_back(to_add.clone());
             } else {
@@ -235,6 +255,29 @@ mod tests {
         let sequence: u32 = 1234567;
         let amount: i128 = -1;
         u128::from_checkpoint_data(&e, sequence, amount);
+    }
+
+    #[test]
+    fn test_upper_lookup() {
+        let e = Env::default();
+
+        let mut checkpoints = Vec::<u128>::new(&e);
+        checkpoints.push_back(u128::from_checkpoint_data(&e, 123, 8293480));
+        checkpoints.push_back(u128::from_checkpoint_data(&e, 124, 1234567));
+        checkpoints.push_back(u128::from_checkpoint_data(&e, 130, 9876543));
+        assert_eq!(upper_lookup(&e, &checkpoints, 122), 0);
+        assert_eq!(upper_lookup(&e, &checkpoints, 123), 8293480);
+        assert_eq!(upper_lookup(&e, &checkpoints, 124), 1234567);
+        assert_eq!(upper_lookup(&e, &checkpoints, 129), 1234567);
+        assert_eq!(upper_lookup(&e, &checkpoints, 199), 9876543);
+    }
+
+    #[test]
+    fn test_upper_lookup_empty() {
+        let e = Env::default();
+
+        let checkpoints = Vec::<u128>::new(&e);
+        assert_eq!(upper_lookup(&e, &checkpoints, 0), 0);
     }
 
     #[test]

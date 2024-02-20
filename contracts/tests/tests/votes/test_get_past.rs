@@ -1,5 +1,5 @@
 #[cfg(test)]
-use soroban_sdk::{testutils::Address as _, Address, Env};
+use soroban_sdk::{testutils::Address as _, Address, Env, Error};
 use tests::{
     common::create_stellar_token,
     env::EnvTestUtils,
@@ -155,6 +155,58 @@ fn test_get_past() {
     assert_eq!(
         votes_client.get_past_votes(&samwise, &e.ledger().sequence()),
         deposit_amount_samwise - transfer_amount
+    );
+}
+
+#[test]
+fn test_get_past_same_sequence_as_ledger() {
+    let e = Env::default();
+    e.mock_all_auths();
+    e.set_default_info();
+
+    let bombadil = Address::generate(&e);
+    let samwise = Address::generate(&e);
+    let frodo = Address::generate(&e);
+    let pippin = Address::generate(&e);
+    let governor = Address::generate(&e);
+
+    let (token_id, token_client) = create_stellar_token(&e, &bombadil);
+    let (_, votes_client) = create_token_votes(&e, &token_id, &governor);
+
+    let cur_ledger = e.ledger().sequence();
+    votes_client.set_vote_sequence(&(cur_ledger + 99));
+
+    let initial_balance = 100_000 * 10i128.pow(7);
+    token_client.mint(&frodo, &initial_balance);
+    token_client.mint(&samwise, &initial_balance);
+    token_client.mint(&pippin, &initial_balance);
+
+    let deposit_amount_frodo = 1_000 * 10i128.pow(7);
+    votes_client.deposit_for(&frodo, &deposit_amount_frodo);
+
+    let deposit_amount_samwise = 250 * 10i128.pow(7);
+    votes_client.deposit_for(&samwise, &deposit_amount_samwise);
+
+    e.jump(10);
+
+    assert_eq!(
+        votes_client.total_supply(),
+        deposit_amount_frodo + deposit_amount_samwise
+    );
+    assert_eq!(votes_client.get_votes(&frodo), deposit_amount_frodo);
+    assert_eq!(votes_client.get_votes(&samwise), deposit_amount_samwise);
+
+    assert_eq!(
+        votes_client.try_get_past_total_supply(&e.ledger().sequence()).err(),
+        Some(Ok(Error::from_contract_error(103)))
+    );
+    assert_eq!(
+        votes_client.try_get_past_votes(&frodo, &e.ledger().sequence()).err(),
+        Some(Ok(Error::from_contract_error(103)))
+    );
+    assert_eq!(
+        votes_client.try_get_past_votes(&samwise, &e.ledger().sequence()).err(),
+        Some(Ok(Error::from_contract_error(103)))
     );
 }
 

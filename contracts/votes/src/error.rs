@@ -19,4 +19,5 @@ pub enum TokenVotesError {
     InsufficientVotesError = 100,
     InvalidDelegateeError = 101,
     InvalidCheckpointError = 102,
+    SequenceNotClosedError = 103,
 }

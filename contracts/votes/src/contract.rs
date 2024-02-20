@@ -6,7 +6,7 @@ use soroban_sdk::{
 use crate::{
     allowance::{create_allowance, spend_allowance},
     balance::{receive_balance, spend_balance},
-    checkpoints::Checkpoint,
+    checkpoints::{upper_lookup, Checkpoint},
     constants::MAX_CHECKPOINT_AGE_LEDGERS,
     error::TokenVotesError,
     events::VoterTokenEvents,
@@ -173,31 +173,16 @@ impl Votes for TokenVotes {
 
     fn get_past_total_supply(e: Env, sequence: u32) -> i128 {
         storage::extend_instance(&e);
+        if sequence >= e.ledger().sequence() {
+            panic_with_error!(e, TokenVotesError::SequenceNotClosedError);
+        }
         let cur_supply = storage::get_total_supply(&e);
         let (cur_seq, cur_supply) = cur_supply.to_checkpoint_data();
         if cur_seq <= sequence {
             return cur_supply;
         }
         let supply_checkpoints = storage::get_total_supply_checkpoints(&e);
-        match supply_checkpoints.binary_search(u128::from_checkpoint_data(&e, sequence, 0)) {
-            Ok(index) => {
-                supply_checkpoints
-                    .get_unchecked(index)
-                    .to_checkpoint_data()
-                    .1
-            }
-            Err(index) => {
-                if index == 0 {
-                    // no entry less than or equal to the requested sequence
-                    0
-                } else {
-                    supply_checkpoints
-                        .get_unchecked(index - 1)
-                        .to_checkpoint_data()
-                        .1
-                }
-            }
-        }
+        upper_lookup(&e, &supply_checkpoints, sequence)
     }
 
     fn get_votes(e: Env, account: Address) -> i128 {
@@ -209,23 +194,16 @@ impl Votes for TokenVotes {
 
     fn get_past_votes(e: Env, user: Address, sequence: u32) -> i128 {
         storage::extend_instance(&e);
+        if sequence >= e.ledger().sequence() {
+            panic_with_error!(e, TokenVotesError::SequenceNotClosedError);
+        }
         let cur_votes = storage::get_voting_units(&e, &user);
         let (cur_seq, cur_amount) = cur_votes.to_checkpoint_data();
         if cur_seq <= sequence {
             return cur_amount;
         }
         let checkpoints = storage::get_voting_units_checkpoints(&e, &user);
-        match checkpoints.binary_search(u128::from_checkpoint_data(&e, sequence, 0)) {
-            Ok(index) => checkpoints.get_unchecked(index).to_checkpoint_data().1,
-            Err(index) => {
-                if index == 0 {
-                    // no entry less than or equal to the requested sequence
-                    0
-                } else {
-                    checkpoints.get_unchecked(index - 1).to_checkpoint_data().1
-                }
-            }
-        }
+        upper_lookup(&e, &checkpoints, sequence)
     }
 
     fn get_delegate(e: Env, account: Address) -> Address {
