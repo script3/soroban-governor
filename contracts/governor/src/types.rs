@@ -6,13 +6,13 @@ use soroban_sdk::{contracttype, Address, String, Symbol, Val, Vec};
 pub struct GovernorSettings {
     /// The votes required to create a proposal.
     pub proposal_threshold: i128,
-    /// The delay (in seconds) from the proposal creation to when the voting period begins. The voting
+    /// The delay (in ledgers) from the proposal creation to when the voting period begins. The voting
     /// period start time will be the checkpoint used to account for all votes for the proposal.
-    pub vote_delay: u64,
-    /// The time (in seconds) the proposal will be open to vote against.
-    pub vote_period: u64,
-    /// The time (in seconds) the proposal will have to wait between vote period closing and execution.
-    pub timelock: u64,
+    pub vote_delay: u32,
+    /// The time (in ledgers) the proposal will be open to vote against.
+    pub vote_period: u32,
+    /// The time (in ledgers) the proposal will have to wait between vote period closing and execution.
+    pub timelock: u32,
     /// The percentage of votes (expressed in BPS) needed of the total available votes to consider a vote successful.
     pub quorum: u32,
     /// Determine which votes to count against the quorum out of for, against, and abstain. The value is encoded
@@ -68,8 +68,8 @@ pub struct ProposalConfig {
 #[derive(Clone)]
 #[contracttype]
 pub struct ProposalData {
-    pub vote_start: u64,
-    pub vote_end: u64,
+    pub vote_start: u32,
+    pub vote_end: u32,
     pub status: ProposalStatus,
 }
 

@@ -35,10 +35,10 @@ impl GovernorEvents {
     /// Emitted when a proposal is queued for submission
     ///
     /// - topics - `["proposal_queued", proposal_id: u32]`
-    /// - data - `[unlock_timestamp: u64]`
-    pub fn proposal_queued(e: &Env, proposal_id: u32, unlock_timestamp: u64) {
+    /// - data - `[unlock_ledger: u64]`
+    pub fn proposal_queued(e: &Env, proposal_id: u32, unlock_ledger: u32) {
         let topics = (Symbol::new(&e, "proposal_queued"), proposal_id);
-        e.events().publish(topics, unlock_timestamp);
+        e.events().publish(topics, unlock_ledger);
     }
 
     /// Emitted when a proposal is canceled

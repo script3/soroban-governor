@@ -1,3 +1,4 @@
-pub(crate) const MAX_PROPOSAL_LIFETIME: u64 = 21 * 24 * 60 * 60; // 21 days
-pub(crate) const MAX_VOTE_PERIOD: u64 = 7 * 24 * 60 * 60; // 7 days
+pub(crate) const ONE_DAY_LEDGERS: u32 = 17280; // assumes 5s a ledger
+pub(crate) const MAX_PROPOSAL_LIFETIME: u32 = 21 * ONE_DAY_LEDGERS; // 21 days
+pub(crate) const MAX_VOTE_PERIOD: u32 = 7 * ONE_DAY_LEDGERS; // 7 days
 pub(crate) const BPS_SCALAR: i128 = 10_000;
