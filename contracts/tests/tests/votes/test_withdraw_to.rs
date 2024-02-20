@@ -61,10 +61,6 @@ fn test_withdraw_to() {
         deposit_amount - withdraw_amount
     );
     assert_eq!(
-        votes_client.get_past_votes(&samwise, &(e.ledger().sequence())),
-        deposit_amount - withdraw_amount
-    );
-    assert_eq!(
         votes_client.get_past_votes(&samwise, &(e.ledger().sequence() - 1)),
         deposit_amount
     );

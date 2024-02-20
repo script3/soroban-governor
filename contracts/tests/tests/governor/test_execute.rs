@@ -57,7 +57,7 @@ fn test_execute() {
 
     // setup a proposal that is ready to be executed
     let proposal_id = governor_client.propose(&samwise, &calldata, &vec![&e], &title, &description);
-    e.jump(settings.vote_delay);
+    e.jump(settings.vote_delay + 1);
     governor_client.vote(&samwise, &proposal_id, &2);
     governor_client.vote(&pippin, &proposal_id, &1);
     e.jump(settings.vote_period);
@@ -150,10 +150,10 @@ fn test_execute_proposal_not_queued() {
     };
 
     let proposal_id = governor_client.propose(&samwise, &calldata, &vec![&e], &title, &description);
-    e.jump(settings.vote_delay);
+    e.jump(settings.vote_delay + 1);
     governor_client.vote(&samwise, &proposal_id, &2);
     governor_client.vote(&pippin, &proposal_id, &1);
-    e.jump(settings.vote_period);
+    e.jump(settings.vote_period - 1);
     e.jump(settings.timelock);
 
     governor_client.execute(&proposal_id);
@@ -203,10 +203,10 @@ fn test_execute_timelock_not_met() {
     };
 
     let proposal_id = governor_client.propose(&samwise, &calldata, &vec![&e], &title, &description);
-    e.jump(settings.vote_delay);
+    e.jump(settings.vote_delay + 1);
     governor_client.vote(&samwise, &proposal_id, &2);
     governor_client.vote(&pippin, &proposal_id, &1);
-    e.jump(settings.vote_period);
+    e.jump(settings.vote_period - 1);
     governor_client.close(&proposal_id);
     e.jump(settings.timelock - 1);
 

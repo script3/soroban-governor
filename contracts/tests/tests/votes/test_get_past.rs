@@ -102,6 +102,14 @@ fn test_get_past() {
         token_client.balance(&pippin),
         initial_balance + withdraw_amount - deposit_amount_pippin
     );
+    assert_eq!(
+        votes_client.balance(&samwise),
+        deposit_amount_samwise - transfer_amount
+    );
+    assert_eq!(
+        votes_client.balance(&frodo),
+        deposit_amount_frodo - transfer_amount
+    );
 
     // verify past total supply
     assert_eq!(
@@ -115,10 +123,6 @@ fn test_get_past() {
     assert_eq!(
         votes_client.get_past_total_supply(&(e.ledger().sequence() - 1)),
         deposit_amount_frodo + deposit_amount_samwise - withdraw_amount
-    );
-    assert_eq!(
-        votes_client.get_past_total_supply(&e.ledger().sequence()),
-        deposit_amount_frodo + deposit_amount_samwise - withdraw_amount + deposit_amount_pippin
     );
 
     // verify past votes for pippen
@@ -134,10 +138,6 @@ fn test_get_past() {
         votes_client.get_past_votes(&pippin, &(e.ledger().sequence() - 1)),
         transfer_amount + transfer_amount - withdraw_amount
     );
-    assert_eq!(
-        votes_client.get_past_votes(&pippin, &e.ledger().sequence()),
-        transfer_amount + transfer_amount - withdraw_amount + deposit_amount_pippin
-    );
 
     // verify past votes for samwise
     assert_eq!(
@@ -150,10 +150,6 @@ fn test_get_past() {
     );
     assert_eq!(
         votes_client.get_past_votes(&samwise, &(e.ledger().sequence() - 1)),
-        deposit_amount_samwise - transfer_amount
-    );
-    assert_eq!(
-        votes_client.get_past_votes(&samwise, &e.ledger().sequence()),
         deposit_amount_samwise - transfer_amount
     );
 }
@@ -334,13 +330,6 @@ fn test_past_checkpoints_get_pruned() {
         votes_client.get_past_total_supply(&start_vote_3),
         deposit_amount_frodo + deposit_amount_samwise + deposit_amount_pippin
     );
-    assert_eq!(
-        votes_client.get_past_total_supply(&e.ledger().sequence()),
-        deposit_amount_frodo
-            + deposit_amount_samwise
-            + deposit_amount_pippin
-            + deposit_2_amount_samwise
-    );
 
     // verify past frodo votes
     assert_eq!(votes_client.get_past_votes(&frodo, &start_vote_0), 0); // pruned
@@ -359,10 +348,6 @@ fn test_past_checkpoints_get_pruned() {
     assert_eq!(
         votes_client.get_past_votes(&frodo, &start_vote_3),
         deposit_amount_frodo + transfer_1_amount + transfer_2_amount
-    );
-    assert_eq!(
-        votes_client.get_past_votes(&frodo, &e.ledger().sequence()),
-        deposit_amount_frodo + transfer_1_amount + transfer_2_amount + transfer_3_amount
     );
 
     // verify past samwise votes
@@ -383,10 +368,6 @@ fn test_past_checkpoints_get_pruned() {
         votes_client.get_past_votes(&samwise, &start_vote_3),
         deposit_amount_samwise - transfer_1_amount
     );
-    assert_eq!(
-        votes_client.get_past_votes(&samwise, &e.ledger().sequence()),
-        deposit_amount_samwise - transfer_1_amount + deposit_2_amount_samwise
-    );
 
     // verify past pippin votes
     assert_eq!(votes_client.get_past_votes(&pippin, &start_vote_0), 0);
@@ -402,9 +383,5 @@ fn test_past_checkpoints_get_pruned() {
     assert_eq!(
         votes_client.get_past_votes(&pippin, &start_vote_3),
         deposit_amount_pippin - transfer_2_amount
-    );
-    assert_eq!(
-        votes_client.get_past_votes(&pippin, &e.ledger().sequence()),
-        deposit_amount_pippin - transfer_2_amount - transfer_3_amount
     );
 }

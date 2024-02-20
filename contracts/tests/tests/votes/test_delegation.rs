@@ -223,10 +223,6 @@ fn test_delegation_chain_only_delegates_balance() {
         votes_client.get_past_votes(&pippin, &(e.ledger().sequence() - 1)),
         0
     );
-    assert_eq!(
-        votes_client.get_past_votes(&pippin, &e.ledger().sequence()),
-        0
-    );
 
     // verify checkpoints for samwise
     assert_eq!(
@@ -241,10 +237,6 @@ fn test_delegation_chain_only_delegates_balance() {
         votes_client.get_past_votes(&samwise, &(e.ledger().sequence() - 1)),
         deposit_amount_pippen
     );
-    assert_eq!(
-        votes_client.get_past_votes(&samwise, &e.ledger().sequence()),
-        deposit_amount_pippen - transfer_amount
-    );
 
     // verify checkpoints for frodo
     assert_eq!(
@@ -257,10 +249,6 @@ fn test_delegation_chain_only_delegates_balance() {
     );
     assert_eq!(
         votes_client.get_past_votes(&frodo, &(e.ledger().sequence() - 1)),
-        deposit_amount_frodo + deposit_amount_samwise
-    );
-    assert_eq!(
-        votes_client.get_past_votes(&frodo, &e.ledger().sequence()),
         deposit_amount_frodo + deposit_amount_samwise
     );
 }

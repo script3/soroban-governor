@@ -41,7 +41,7 @@ fn test_vote() {
     // setup a proposal that can be voted on
     let proposal_id =
         governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
-    e.jump(settings.vote_delay);
+    e.jump(settings.vote_delay + 1);
 
     let voter_support = 1;
     governor_client.vote(&samwise, &proposal_id, &voter_support);
@@ -123,7 +123,7 @@ fn test_vote_user_changes_support() {
     // setup a proposal that can be voted on
     let proposal_id =
         governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
-    e.jump(settings.vote_delay);
+    e.jump(settings.vote_delay + 1);
 
     let voter_support = 1;
     governor_client.vote(&samwise, &proposal_id, &voter_support);
@@ -188,7 +188,7 @@ fn test_vote_multiple_users() {
     // setup a proposal that can be voted on
     let proposal_id =
         governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
-    e.jump(settings.vote_delay);
+    e.jump(settings.vote_delay + 1);
 
     governor_client.vote(&samwise, &proposal_id, &2);
     e.jump(10);
@@ -306,7 +306,7 @@ fn test_vote_invalid_support_option() {
     // setup a proposal that can be voted on
     let proposal_id =
         governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
-    e.jump(settings.vote_delay);
+    e.jump(settings.vote_delay + 1);
 
     governor_client.vote(&samwise, &proposal_id, &3);
 }

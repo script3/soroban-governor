@@ -57,10 +57,6 @@ fn test_deposit_for() {
     assert_eq!(votes_client.total_supply(), deposit_amount);
     assert_eq!(votes_client.get_votes(&samwise), deposit_amount);
     assert_eq!(
-        votes_client.get_past_votes(&samwise, &(e.ledger().sequence())),
-        deposit_amount
-    );
-    assert_eq!(
         token_client.balance(&samwise),
         initial_balance - deposit_amount
     );

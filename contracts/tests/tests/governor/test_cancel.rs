@@ -115,7 +115,8 @@ fn test_cancel_proposal_active() {
     // setup a proposal, vote to make it active
     let proposal_id =
         governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
-    e.jump(settings.vote_delay);
+    e.jump(settings.vote_delay + 1);
+
     governor_client.vote(&samwise, &proposal_id, &2);
 
     governor_client.cancel(&samwise, &proposal_id);
