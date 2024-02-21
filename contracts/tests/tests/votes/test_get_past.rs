@@ -1,9 +1,10 @@
 #[cfg(test)]
-use soroban_sdk::{testutils::Address as _, Address, Env};
+use soroban_sdk::{testutils::Address as _, Address, Env, Error};
 use tests::{
     common::create_stellar_token,
     env::EnvTestUtils,
     votes::{create_token_votes, create_token_votes_wasm},
+    ONE_DAY_LEDGERS,
 };
 
 #[test]
@@ -16,9 +17,17 @@ fn test_get_past() {
     let samwise = Address::generate(&e);
     let frodo = Address::generate(&e);
     let pippin = Address::generate(&e);
+    let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_token_votes(&e, &token_id);
+    let (_, votes_client) = create_token_votes(&e, &token_id, &governor);
+
+    // setup vote ledgers - do a ledger before each action to verify the actions
+    // occuring after the vote starts are recorded properly
+    let cur_ledger = e.ledger().sequence();
+    votes_client.set_vote_sequence(&(cur_ledger + 99));
+    votes_client.set_vote_sequence(&(cur_ledger + 199));
+    votes_client.set_vote_sequence(&(cur_ledger + 299));
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&frodo, &initial_balance);
@@ -36,7 +45,7 @@ fn test_get_past() {
         deposit_amount_frodo + deposit_amount_samwise
     );
 
-    e.jump_with_sequence(100);
+    e.jump(100);
 
     // transfer some tokens to verify that the total supply remains constant
     let transfer_amount = 100 * 10i128.pow(7);
@@ -53,7 +62,7 @@ fn test_get_past() {
     );
     assert_eq!(token_client.balance(&pippin), initial_balance);
 
-    e.jump_with_sequence(100);
+    e.jump(100);
 
     // withdraw some tokens
     let withdraw_amount = 75 * 10i128.pow(7);
@@ -73,13 +82,14 @@ fn test_get_past() {
         initial_balance + withdraw_amount
     );
 
-    e.jump_with_sequence(100);
+    e.jump(100);
 
     // deposit tokens
     let deposit_amount_pippin = 50_000 * 10i128.pow(7);
 
     votes_client.deposit_for(&pippin, &deposit_amount_pippin);
 
+    // verify current values
     assert_eq!(
         votes_client.total_supply(),
         deposit_amount_frodo + deposit_amount_samwise - withdraw_amount + deposit_amount_pippin
@@ -92,59 +102,107 @@ fn test_get_past() {
         token_client.balance(&pippin),
         initial_balance + withdraw_amount - deposit_amount_pippin
     );
+    assert_eq!(
+        votes_client.balance(&samwise),
+        deposit_amount_samwise - transfer_amount
+    );
+    assert_eq!(
+        votes_client.balance(&frodo),
+        deposit_amount_frodo - transfer_amount
+    );
 
     // verify past total supply
     assert_eq!(
-        votes_client.get_past_total_supply(&(e.ledger().timestamp() - 201)),
+        votes_client.get_past_total_supply(&(e.ledger().sequence() - 201)),
         deposit_amount_frodo + deposit_amount_samwise
     );
     assert_eq!(
-        votes_client.get_past_total_supply(&(e.ledger().timestamp() - 101)),
+        votes_client.get_past_total_supply(&(e.ledger().sequence() - 101)),
         deposit_amount_frodo + deposit_amount_samwise
     );
     assert_eq!(
-        votes_client.get_past_total_supply(&(e.ledger().timestamp() - 1)),
+        votes_client.get_past_total_supply(&(e.ledger().sequence() - 1)),
         deposit_amount_frodo + deposit_amount_samwise - withdraw_amount
-    );
-    assert_eq!(
-        votes_client.get_past_total_supply(&e.ledger().timestamp()),
-        deposit_amount_frodo + deposit_amount_samwise - withdraw_amount + deposit_amount_pippin
     );
 
     // verify past votes for pippen
     assert_eq!(
-        votes_client.get_past_votes(&pippin, &(e.ledger().timestamp() - 201)),
+        votes_client.get_past_votes(&pippin, &(e.ledger().sequence() - 201)),
         0
     );
     assert_eq!(
-        votes_client.get_past_votes(&pippin, &(e.ledger().timestamp() - 101)),
+        votes_client.get_past_votes(&pippin, &(e.ledger().sequence() - 101)),
         transfer_amount + transfer_amount
     );
     assert_eq!(
-        votes_client.get_past_votes(&pippin, &(e.ledger().timestamp() - 1)),
+        votes_client.get_past_votes(&pippin, &(e.ledger().sequence() - 1)),
         transfer_amount + transfer_amount - withdraw_amount
-    );
-    assert_eq!(
-        votes_client.get_past_votes(&pippin, &e.ledger().timestamp()),
-        transfer_amount + transfer_amount - withdraw_amount + deposit_amount_pippin
     );
 
     // verify past votes for samwise
     assert_eq!(
-        votes_client.get_past_votes(&samwise, &(e.ledger().timestamp() - 201)),
+        votes_client.get_past_votes(&samwise, &(e.ledger().sequence() - 201)),
         deposit_amount_samwise
     );
     assert_eq!(
-        votes_client.get_past_votes(&samwise, &(e.ledger().timestamp() - 101)),
+        votes_client.get_past_votes(&samwise, &(e.ledger().sequence() - 101)),
         deposit_amount_samwise - transfer_amount
     );
     assert_eq!(
-        votes_client.get_past_votes(&samwise, &(e.ledger().timestamp() - 1)),
+        votes_client.get_past_votes(&samwise, &(e.ledger().sequence() - 1)),
         deposit_amount_samwise - transfer_amount
     );
+}
+
+#[test]
+fn test_get_past_same_sequence_as_ledger() {
+    let e = Env::default();
+    e.mock_all_auths();
+    e.set_default_info();
+
+    let bombadil = Address::generate(&e);
+    let samwise = Address::generate(&e);
+    let frodo = Address::generate(&e);
+    let pippin = Address::generate(&e);
+    let governor = Address::generate(&e);
+
+    let (token_id, token_client) = create_stellar_token(&e, &bombadil);
+    let (_, votes_client) = create_token_votes(&e, &token_id, &governor);
+
+    let cur_ledger = e.ledger().sequence();
+    votes_client.set_vote_sequence(&(cur_ledger + 99));
+
+    let initial_balance = 100_000 * 10i128.pow(7);
+    token_client.mint(&frodo, &initial_balance);
+    token_client.mint(&samwise, &initial_balance);
+    token_client.mint(&pippin, &initial_balance);
+
+    let deposit_amount_frodo = 1_000 * 10i128.pow(7);
+    votes_client.deposit_for(&frodo, &deposit_amount_frodo);
+
+    let deposit_amount_samwise = 250 * 10i128.pow(7);
+    votes_client.deposit_for(&samwise, &deposit_amount_samwise);
+
+    e.jump(10);
+
     assert_eq!(
-        votes_client.get_past_votes(&samwise, &e.ledger().timestamp()),
-        deposit_amount_samwise - transfer_amount
+        votes_client.total_supply(),
+        deposit_amount_frodo + deposit_amount_samwise
+    );
+    assert_eq!(votes_client.get_votes(&frodo), deposit_amount_frodo);
+    assert_eq!(votes_client.get_votes(&samwise), deposit_amount_samwise);
+
+    assert_eq!(
+        votes_client.try_get_past_total_supply(&e.ledger().sequence()).err(),
+        Some(Ok(Error::from_contract_error(103)))
+    );
+    assert_eq!(
+        votes_client.try_get_past_votes(&frodo, &e.ledger().sequence()).err(),
+        Some(Ok(Error::from_contract_error(103)))
+    );
+    assert_eq!(
+        votes_client.try_get_past_votes(&samwise, &e.ledger().sequence()).err(),
+        Some(Ok(Error::from_contract_error(103)))
     );
 }
 
@@ -155,20 +213,29 @@ fn test_past_checkpoints_get_pruned() {
     e.set_default_info();
     e.budget().reset_unlimited();
 
-    const ONE_DAY: u64 = 24 * 60 * 60;
-
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
     let frodo = Address::generate(&e);
     let pippin = Address::generate(&e);
+    let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
     // @dev: Test with wasm version due to omission of code path in the happy path
-    let (_, votes_client) = create_token_votes_wasm(&e, &token_id);
+    let (_, votes_client) = create_token_votes_wasm(&e, &token_id, &governor);
+
+    // setup vote ledgers - do a ledger before each action to verify the actions
+    // occuring after the vote starts are recorded properly
+    let cur_ledger = e.ledger().sequence();
+    let start_vote_0 = cur_ledger + ONE_DAY_LEDGERS - 1;
+    let start_vote_1 = cur_ledger + 4 * ONE_DAY_LEDGERS - 1;
+    let start_vote_2 = cur_ledger + 8 * ONE_DAY_LEDGERS - 1;
+    let start_vote_3 = cur_ledger + 10 * ONE_DAY_LEDGERS - 1;
+    votes_client.set_vote_sequence(&start_vote_0);
+    votes_client.set_vote_sequence(&start_vote_1);
+    votes_client.set_vote_sequence(&start_vote_2);
+    votes_client.set_vote_sequence(&start_vote_3);
 
     // Time = 10 days ago
-    let t_minus_10_days = e.ledger().timestamp();
-
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&frodo, &initial_balance);
     token_client.mint(&samwise, &initial_balance);
@@ -177,9 +244,8 @@ fn test_past_checkpoints_get_pruned() {
     let deposit_amount_frodo = 1_000 * 10i128.pow(7);
     votes_client.deposit_for(&frodo, &deposit_amount_frodo);
 
-    e.jump_with_sequence(ONE_DAY);
-    // Time = 9 days ago
-    let t_minus_9_days = e.ledger().timestamp();
+    e.jump(ONE_DAY_LEDGERS);
+    // Time = 9 days ago (vote 0 passed by 1 ledger)
 
     let deposit_amount_samwise = 250 * 10i128.pow(7);
     votes_client.deposit_for(&samwise, &deposit_amount_samwise);
@@ -187,32 +253,43 @@ fn test_past_checkpoints_get_pruned() {
     let transfer_1_amount = 100 * 10i128.pow(7);
     votes_client.transfer(&samwise, &frodo, &transfer_1_amount);
 
-    e.jump_with_sequence(3 * ONE_DAY);
-    // Time = 6 days ago
-    let t_minus_6_days = e.ledger().timestamp();
+    e.jump(3 * ONE_DAY_LEDGERS);
+    // Time = 6 days ago (vote 1 passed by 1 ledger)
 
     let deposit_amount_pippin = 5_000 * 10i128.pow(7);
     votes_client.deposit_for(&pippin, &deposit_amount_pippin);
 
-    e.jump_with_sequence(4 * ONE_DAY);
-    // Time = 2 days ago
-    let t_minus_2_days = e.ledger().timestamp();
+    e.jump(4 * ONE_DAY_LEDGERS);
+    // Time = 2 days ago (vote 2 passed by 1 ledger)
 
     let transfer_2_amount = 125 * 10i128.pow(7);
     votes_client.transfer(&pippin, &frodo, &transfer_2_amount);
 
-    e.jump_with_sequence(2 * ONE_DAY);
-    // Time = now
-    let t_now = e.ledger().timestamp();
+    e.jump(2 * ONE_DAY_LEDGERS);
+    // Time = now (vote 3 passed by 1 ledger)
+    // set a vote ledger to cause the
+    votes_client.set_vote_sequence(&(e.ledger().sequence() + 2 * ONE_DAY_LEDGERS));
 
-    // -> results in
+    // verify to be pruned values
+    assert_eq!(
+        votes_client.get_past_total_supply(&start_vote_0),
+        deposit_amount_frodo
+    );
+    assert_eq!(
+        votes_client.get_past_votes(&frodo, &start_vote_0),
+        deposit_amount_frodo
+    );
+    assert_eq!(votes_client.get_past_votes(&samwise, &start_vote_0), 0);
+    assert_eq!(votes_client.get_past_votes(&pippin, &start_vote_0), 0);
+
+    // -> results in pruning
     let transfer_3_amount = 75 * 10i128.pow(7);
     votes_client.transfer(&pippin, &frodo, &transfer_3_amount);
 
     let deposit_2_amount_samwise = 50 * 10i128.pow(7);
     votes_client.deposit_for(&samwise, &deposit_2_amount_samwise);
 
-    let max_vote_period_check = e.ledger().timestamp() - 7 * ONE_DAY;
+    let max_vote_period_check = e.ledger().sequence() - 7 * ONE_DAY_LEDGERS;
 
     // verify current values
     assert_eq!(
@@ -236,94 +313,75 @@ fn test_past_checkpoints_get_pruned() {
     );
 
     // verify past total supply
-    assert_eq!(votes_client.get_past_total_supply(&t_minus_10_days), 0); // pruned
-    assert_eq!(
-        votes_client.get_past_total_supply(&t_minus_9_days),
-        deposit_amount_frodo + deposit_amount_samwise
-    );
+    assert_eq!(votes_client.get_past_total_supply(&start_vote_0), 0); // pruned
     assert_eq!(
         votes_client.get_past_total_supply(&max_vote_period_check),
         deposit_amount_frodo + deposit_amount_samwise
     );
     assert_eq!(
-        votes_client.get_past_total_supply(&t_minus_6_days),
+        votes_client.get_past_total_supply(&start_vote_1),
+        deposit_amount_frodo + deposit_amount_samwise
+    );
+    assert_eq!(
+        votes_client.get_past_total_supply(&start_vote_2),
         deposit_amount_frodo + deposit_amount_samwise + deposit_amount_pippin
     );
     assert_eq!(
-        votes_client.get_past_total_supply(&t_minus_2_days),
+        votes_client.get_past_total_supply(&start_vote_3),
         deposit_amount_frodo + deposit_amount_samwise + deposit_amount_pippin
-    );
-    assert_eq!(
-        votes_client.get_past_total_supply(&t_now),
-        deposit_amount_frodo
-            + deposit_amount_samwise
-            + deposit_amount_pippin
-            + deposit_2_amount_samwise
     );
 
     // verify past frodo votes
-    assert_eq!(votes_client.get_past_votes(&frodo, &t_minus_10_days), 0); // pruned
-    assert_eq!(
-        votes_client.get_past_votes(&frodo, &t_minus_9_days),
-        deposit_amount_frodo + transfer_1_amount
-    );
+    assert_eq!(votes_client.get_past_votes(&frodo, &start_vote_0), 0); // pruned
     assert_eq!(
         votes_client.get_past_votes(&frodo, &max_vote_period_check),
         deposit_amount_frodo + transfer_1_amount
     );
     assert_eq!(
-        votes_client.get_past_votes(&frodo, &t_minus_6_days),
+        votes_client.get_past_votes(&frodo, &start_vote_1),
         deposit_amount_frodo + transfer_1_amount
     );
     assert_eq!(
-        votes_client.get_past_votes(&frodo, &t_minus_2_days),
-        deposit_amount_frodo + transfer_1_amount + transfer_2_amount
+        votes_client.get_past_votes(&frodo, &start_vote_2),
+        deposit_amount_frodo + transfer_1_amount
     );
     assert_eq!(
-        votes_client.get_past_votes(&frodo, &t_now),
-        deposit_amount_frodo + transfer_1_amount + transfer_2_amount + transfer_3_amount
+        votes_client.get_past_votes(&frodo, &start_vote_3),
+        deposit_amount_frodo + transfer_1_amount + transfer_2_amount
     );
 
     // verify past samwise votes
-    assert_eq!(votes_client.get_past_votes(&samwise, &t_minus_10_days), 0); // pruned
-    assert_eq!(
-        votes_client.get_past_votes(&samwise, &t_minus_9_days),
-        deposit_amount_samwise - transfer_1_amount
-    );
+    assert_eq!(votes_client.get_past_votes(&samwise, &start_vote_0), 0); // pruned
     assert_eq!(
         votes_client.get_past_votes(&samwise, &max_vote_period_check),
         deposit_amount_samwise - transfer_1_amount
     );
     assert_eq!(
-        votes_client.get_past_votes(&samwise, &t_minus_6_days),
+        votes_client.get_past_votes(&samwise, &start_vote_1),
         deposit_amount_samwise - transfer_1_amount
     );
     assert_eq!(
-        votes_client.get_past_votes(&samwise, &t_minus_2_days),
+        votes_client.get_past_votes(&samwise, &start_vote_2),
         deposit_amount_samwise - transfer_1_amount
     );
     assert_eq!(
-        votes_client.get_past_votes(&samwise, &t_now),
-        deposit_amount_samwise - transfer_1_amount + deposit_2_amount_samwise
+        votes_client.get_past_votes(&samwise, &start_vote_3),
+        deposit_amount_samwise - transfer_1_amount
     );
 
     // verify past pippin votes
-    assert_eq!(votes_client.get_past_votes(&pippin, &t_minus_10_days), 0);
-    assert_eq!(votes_client.get_past_votes(&pippin, &t_minus_9_days), 0);
+    assert_eq!(votes_client.get_past_votes(&pippin, &start_vote_0), 0);
     assert_eq!(
         votes_client.get_past_votes(&pippin, &max_vote_period_check),
         0
     );
+    assert_eq!(votes_client.get_past_votes(&pippin, &start_vote_1), 0);
     assert_eq!(
-        votes_client.get_past_votes(&pippin, &t_minus_6_days),
+        votes_client.get_past_votes(&pippin, &start_vote_2),
         deposit_amount_pippin
     );
     assert_eq!(
-        votes_client.get_past_votes(&pippin, &t_minus_2_days),
+        votes_client.get_past_votes(&pippin, &start_vote_3),
         deposit_amount_pippin - transfer_2_amount
-    );
-    assert_eq!(
-        votes_client.get_past_votes(&pippin, &t_now),
-        deposit_amount_pippin - transfer_2_amount - transfer_3_amount
     );
 }

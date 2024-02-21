@@ -4,6 +4,8 @@ use soroban_governor::{
 };
 use soroban_sdk::{testutils::Address as _, vec, Address, Env, IntoVal, String, Symbol, Vec};
 
+use crate::{common, votes, ONE_DAY_LEDGERS};
+
 mod governor_contract_wasm {
     soroban_sdk::contractimport!(
         file = "../../target/wasm32-unknown-unknown/optimized/soroban_governor.wasm"
@@ -12,45 +14,53 @@ mod governor_contract_wasm {
 
 /// Create a governor contract
 ///
+/// Returns (governor, underlying_token, vote_token)
+///
 /// ### Arguments
-/// * `votes` - The address of the voting token
+/// * `admin` - The address of the admin
 /// * `settings` - The settings for the governor
 pub fn create_governor<'a>(
     e: &Env,
-    votes: &Address,
+    admin: &Address,
     settings: &GovernorSettings,
-) -> (Address, GovernorContractClient<'a>) {
+) -> (Address, Address, Address) {
     let governor_address = e.register_contract(None, GovernorContract {});
+    let (underlying_token, _) = common::create_stellar_token(e, admin);
+    let (vote_address, _) = votes::create_token_votes(e, &underlying_token, &governor_address);
     let govenor_client: GovernorContractClient<'a> =
         GovernorContractClient::new(&e, &governor_address);
-    govenor_client.initialize(&votes, settings);
-    return (governor_address, govenor_client);
+    govenor_client.initialize(&vote_address, settings);
+    return (governor_address, underlying_token, vote_address);
 }
 
 /// Create a governor contract with the wasm contract
 ///
+/// Returns (governor, underlying_token, vote_token)
+///
 /// ### Arguments
-/// * `votes` - The address of the voting token
+/// * `admin` - The address of the admin
 /// * `settings` - The settings for the governor
 pub fn create_governor_wasm<'a>(
     e: &Env,
-    votes: &Address,
+    admin: &Address,
     settings: &GovernorSettings,
-) -> (Address, GovernorContractClient<'a>) {
+) -> (Address, Address, Address) {
     let governor_address = e.register_contract_wasm(None, governor_contract_wasm::WASM);
+    let (underlying_token, _) = common::create_stellar_token(e, admin);
+    let (vote_address, _) = votes::create_token_votes_wasm(e, &underlying_token, &governor_address);
     let govenor_client: GovernorContractClient<'a> =
         GovernorContractClient::new(&e, &governor_address);
-    govenor_client.initialize(&votes, settings);
-    return (governor_address, govenor_client);
+    govenor_client.initialize(&vote_address, settings);
+    return (governor_address, underlying_token, vote_address);
 }
 
 /// Default governor settings
 pub fn default_governor_settings() -> GovernorSettings {
     GovernorSettings {
         proposal_threshold: 1_0000000,
-        vote_delay: 60 * 60 * 24,
-        vote_period: 60 * 60 * 24 * 7,
-        timelock: 60 * 60 * 24,
+        vote_delay: ONE_DAY_LEDGERS,
+        vote_period: ONE_DAY_LEDGERS * 7,
+        timelock: ONE_DAY_LEDGERS,
         quorum: 100,          // 1%
         counting_type: 4,     // 0x001 (for)
         vote_threshold: 5100, // 51%

@@ -4,6 +4,7 @@ use soroban_sdk::{
     vec, Address, Env, IntoVal, Symbol, Val,
 };
 use tests::{common::create_stellar_token, env::EnvTestUtils, votes::create_token_votes};
+
 #[test]
 fn test_deposit_for() {
     let e = Env::default();
@@ -12,9 +13,10 @@ fn test_deposit_for() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
+    let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (votes_id, votes_client) = create_token_votes(&e, &token_id);
+    let (votes_id, votes_client) = create_token_votes(&e, &token_id, &governor);
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&samwise, &initial_balance);
@@ -55,10 +57,6 @@ fn test_deposit_for() {
     assert_eq!(votes_client.total_supply(), deposit_amount);
     assert_eq!(votes_client.get_votes(&samwise), deposit_amount);
     assert_eq!(
-        votes_client.get_past_votes(&samwise, &(e.ledger().timestamp())),
-        deposit_amount
-    );
-    assert_eq!(
         token_client.balance(&samwise),
         initial_balance - deposit_amount
     );
@@ -95,9 +93,10 @@ fn test_deposit_for_negative_amount() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
+    let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_token_votes(&e, &token_id);
+    let (_, votes_client) = create_token_votes(&e, &token_id, &governor);
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&samwise, &initial_balance);

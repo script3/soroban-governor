@@ -14,9 +14,12 @@ fn test_delegation() {
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
     let frodo = Address::generate(&e);
+    let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (votes_id, votes_client) = create_token_votes(&e, &token_id);
+    let (votes_id, votes_client) = create_token_votes(&e, &token_id, &governor);
+
+    votes_client.set_vote_sequence(&(e.ledger().sequence() + 100 - 1));
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&samwise, &initial_balance);
@@ -28,7 +31,7 @@ fn test_delegation() {
     let deposit_amount_samwise = 100 * 10i128.pow(7);
     votes_client.deposit_for(&samwise, &deposit_amount_samwise);
 
-    e.jump_with_sequence(100);
+    e.jump(100);
 
     votes_client.delegate(&samwise, &frodo);
 
@@ -63,11 +66,11 @@ fn test_delegation() {
         deposit_amount_samwise + deposit_amount_frodo
     );
     assert_eq!(
-        votes_client.get_past_votes(&samwise, &(e.ledger().timestamp() - 1)),
+        votes_client.get_past_votes(&samwise, &(e.ledger().sequence() - 1)),
         deposit_amount_samwise
     );
     assert_eq!(
-        votes_client.get_past_votes(&frodo, &(e.ledger().timestamp() - 1)),
+        votes_client.get_past_votes(&frodo, &(e.ledger().sequence() - 1)),
         deposit_amount_frodo
     );
     assert_eq!(
@@ -128,8 +131,17 @@ fn test_delegation_chain_only_delegates_balance() {
     let pippin = Address::generate(&e);
     let merry = Address::generate(&e);
 
+    let governor = Address::generate(&e);
+
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_token_votes(&e, &token_id);
+    let (_, votes_client) = create_token_votes(&e, &token_id, &governor);
+
+    // setup vote ledgers - do a ledger before each action to verify the actions
+    // occuring after the vote starts are recorded properly
+    let cur_ledger = e.ledger().sequence();
+    votes_client.set_vote_sequence(&(cur_ledger + 99));
+    votes_client.set_vote_sequence(&(cur_ledger + 199));
+    votes_client.set_vote_sequence(&(cur_ledger + 299));
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&frodo, &initial_balance);
@@ -145,7 +157,7 @@ fn test_delegation_chain_only_delegates_balance() {
     let deposit_amount_pippen = 100 * 10i128.pow(7);
     votes_client.deposit_for(&pippin, &deposit_amount_pippen);
 
-    e.jump_with_sequence(100);
+    e.jump(100);
 
     // delegate from pippin -> samwise
     votes_client.delegate(&pippin, &samwise);
@@ -160,7 +172,7 @@ fn test_delegation_chain_only_delegates_balance() {
         deposit_amount_samwise + deposit_amount_pippen
     );
 
-    e.jump_with_sequence(100);
+    e.jump(100);
 
     // delegate from samwise -> frodo, verify only balance is delegated
     votes_client.delegate(&samwise, &frodo);
@@ -176,7 +188,7 @@ fn test_delegation_chain_only_delegates_balance() {
         deposit_amount_samwise + deposit_amount_frodo
     );
 
-    e.jump_with_sequence(100);
+    e.jump(100);
 
     // verify transfers only effect immediate delegate
     let transfer_amount = 10 * 10i128.pow(7);
@@ -200,55 +212,43 @@ fn test_delegation_chain_only_delegates_balance() {
 
     // verify checkpoints for pippin
     assert_eq!(
-        votes_client.get_past_votes(&pippin, &(e.ledger().timestamp() - 201)),
+        votes_client.get_past_votes(&pippin, &(e.ledger().sequence() - 201)),
         deposit_amount_pippen
     );
     assert_eq!(
-        votes_client.get_past_votes(&pippin, &(e.ledger().timestamp() - 101)),
+        votes_client.get_past_votes(&pippin, &(e.ledger().sequence() - 101)),
         0
     );
     assert_eq!(
-        votes_client.get_past_votes(&pippin, &(e.ledger().timestamp() - 1)),
-        0
-    );
-    assert_eq!(
-        votes_client.get_past_votes(&pippin, &e.ledger().timestamp()),
+        votes_client.get_past_votes(&pippin, &(e.ledger().sequence() - 1)),
         0
     );
 
     // verify checkpoints for samwise
     assert_eq!(
-        votes_client.get_past_votes(&samwise, &(e.ledger().timestamp() - 201)),
+        votes_client.get_past_votes(&samwise, &(e.ledger().sequence() - 201)),
         deposit_amount_samwise
     );
     assert_eq!(
-        votes_client.get_past_votes(&samwise, &(e.ledger().timestamp() - 101)),
+        votes_client.get_past_votes(&samwise, &(e.ledger().sequence() - 101)),
         deposit_amount_samwise + deposit_amount_pippen
     );
     assert_eq!(
-        votes_client.get_past_votes(&samwise, &(e.ledger().timestamp() - 1)),
+        votes_client.get_past_votes(&samwise, &(e.ledger().sequence() - 1)),
         deposit_amount_pippen
-    );
-    assert_eq!(
-        votes_client.get_past_votes(&samwise, &e.ledger().timestamp()),
-        deposit_amount_pippen - transfer_amount
     );
 
     // verify checkpoints for frodo
     assert_eq!(
-        votes_client.get_past_votes(&frodo, &(e.ledger().timestamp() - 201)),
+        votes_client.get_past_votes(&frodo, &(e.ledger().sequence() - 201)),
         deposit_amount_frodo
     );
     assert_eq!(
-        votes_client.get_past_votes(&frodo, &(e.ledger().timestamp() - 101)),
+        votes_client.get_past_votes(&frodo, &(e.ledger().sequence() - 101)),
         deposit_amount_frodo
     );
     assert_eq!(
-        votes_client.get_past_votes(&frodo, &(e.ledger().timestamp() - 1)),
-        deposit_amount_frodo + deposit_amount_samwise
-    );
-    assert_eq!(
-        votes_client.get_past_votes(&frodo, &e.ledger().timestamp()),
+        votes_client.get_past_votes(&frodo, &(e.ledger().sequence() - 1)),
         deposit_amount_frodo + deposit_amount_samwise
     );
 }
@@ -262,9 +262,10 @@ fn test_delegation_to_current_delegate() {
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
     let frodo = Address::generate(&e);
+    let governor = Address::generate(&e);
 
     let (token_id, _) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_token_votes(&e, &token_id);
+    let (_, votes_client) = create_token_votes(&e, &token_id, &governor);
 
     votes_client.delegate(&samwise, &frodo);
 

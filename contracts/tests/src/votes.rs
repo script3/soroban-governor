@@ -11,10 +11,14 @@ mod token_votes_wasm {
 ///
 /// ### Arguments
 /// * `token` - The underlying token address
-pub fn create_token_votes<'a>(e: &Env, token: &Address) -> (Address, TokenVotesClient<'a>) {
+pub fn create_token_votes<'a>(
+    e: &Env,
+    token: &Address,
+    governor: &Address,
+) -> (Address, TokenVotesClient<'a>) {
     let vote_token_id = e.register_contract(None, TokenVotes {});
     let vote_token_client = TokenVotesClient::new(e, &vote_token_id);
-    vote_token_client.initialize(&token);
+    vote_token_client.initialize(&token, &governor);
     (vote_token_id, vote_token_client)
 }
 
@@ -22,9 +26,13 @@ pub fn create_token_votes<'a>(e: &Env, token: &Address) -> (Address, TokenVotesC
 ///
 /// ### Arguments
 /// * `token` - The underlying token address
-pub fn create_token_votes_wasm<'a>(e: &Env, token: &Address) -> (Address, TokenVotesClient<'a>) {
+pub fn create_token_votes_wasm<'a>(
+    e: &Env,
+    token: &Address,
+    governor: &Address,
+) -> (Address, TokenVotesClient<'a>) {
     let vote_token_id = e.register_contract_wasm(None, token_votes_wasm::WASM);
     let vote_token_client = TokenVotesClient::new(e, &vote_token_id);
-    vote_token_client.initialize(&token);
+    vote_token_client.initialize(&token, &governor);
     (vote_token_id, vote_token_client)
 }

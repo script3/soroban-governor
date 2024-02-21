@@ -1,14 +1,15 @@
 #[cfg(test)]
+use sep_41_token::testutils::MockTokenClient;
 use soroban_governor::types::ProposalStatus;
+use soroban_governor::GovernorContractClient;
 use soroban_sdk::{
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, Events},
     vec, Address, Env, IntoVal, Symbol, TryIntoVal, Val,
 };
+use soroban_votes::TokenVotesClient;
 use tests::{
-    common::create_stellar_token,
     env::EnvTestUtils,
     governor::{create_governor, default_governor_settings, default_proposal_data},
-    votes::create_token_votes,
 };
 
 #[test]
@@ -18,10 +19,12 @@ fn test_propose() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let (token_address, token_client) = create_stellar_token(&e, &bombadil);
-    let (votes_address, votes_client) = create_token_votes(&e, &token_address);
     let settings = default_governor_settings();
-    let (govenor_address, governor_client) = create_governor(&e, &votes_address, &settings);
+    let (governor_address, token_address, votes_address) =
+        create_governor(&e, &bombadil, &settings);
+    let token_client = MockTokenClient::new(&e, &token_address);
+    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_mint_amount: i128 = 10_000_000;
     token_client.mint(&samwise, &samwise_mint_amount);
@@ -39,7 +42,7 @@ fn test_propose() {
             samwise.clone(),
             AuthorizedInvocation {
                 function: AuthorizedFunction::Contract((
-                    govenor_address.clone(),
+                    governor_address.clone(),
                     Symbol::new(&e, "propose"),
                     vec![
                         &e,
@@ -99,7 +102,7 @@ fn test_propose() {
         vec![
             &e,
             (
-                govenor_address.clone(),
+                governor_address.clone(),
                 (
                     Symbol::new(&e, "proposal_created"),
                     proposal_id,
@@ -121,10 +124,12 @@ fn test_propose_below_proposal_threshold() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let (token_address, token_client) = create_stellar_token(&e, &bombadil);
-    let (votes_address, votes_client) = create_token_votes(&e, &token_address);
     let settings = default_governor_settings();
-    let (_, governor_client) = create_governor(&e, &votes_address, &settings);
+    let (governor_address, token_address, votes_address) =
+        create_governor(&e, &bombadil, &settings);
+    let token_client = MockTokenClient::new(&e, &token_address);
+    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_mint_amount: i128 = 999_999;
     token_client.mint(&samwise, &samwise_mint_amount);

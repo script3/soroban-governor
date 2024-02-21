@@ -56,14 +56,14 @@ impl Governor for GovernorContract {
         storage::extend_instance(&e);
 
         let settings = storage::get_settings(&e);
-        let creater_votes =
-            VotesClient::new(&e, &storage::get_voter_token_address(&e)).get_votes(&creator);
+        let votes_client = VotesClient::new(&e, &storage::get_voter_token_address(&e));
+        let creater_votes = votes_client.get_votes(&creator);
         if creater_votes < settings.proposal_threshold {
             panic_with_error!(&e, GovernorError::InsufficientVotingUnitsError)
         }
 
         let proposal_id = storage::get_next_proposal_id(&e);
-        let vote_start = e.ledger().timestamp() + settings.vote_delay;
+        let vote_start = e.ledger().sequence() + settings.vote_delay;
         let vote_end = vote_start + settings.vote_period;
         let proposal_config = ProposalConfig {
             title: title.clone(),
@@ -80,6 +80,8 @@ impl Governor for GovernorContract {
         storage::set_next_proposal_id(&e, &(proposal_id + 1));
         storage::set_proposal_config(&e, &proposal_id, &proposal_config);
         storage::set_proposal_data(&e, &proposal_id, &proposal_data);
+
+        votes_client.set_vote_sequence(&vote_start);
 
         GovernorEvents::proposal_created(&e, proposal_id, creator, title, calldata);
         proposal_id
@@ -104,7 +106,7 @@ impl Governor for GovernorContract {
         let mut proposal_data = storage::get_proposal_data(&e, &proposal_id)
             .unwrap_or_else(|| panic_with_error!(&e, GovernorError::NonExistentProposalError));
 
-        if e.ledger().timestamp() < proposal_data.vote_end {
+        if e.ledger().sequence() < proposal_data.vote_end {
             panic_with_error!(&e, GovernorError::VotePeriodNotFinishedError)
         }
 
@@ -155,7 +157,7 @@ impl Governor for GovernorContract {
         }
 
         let settings = storage::get_settings(&e);
-        if e.ledger().timestamp() < proposal_data.vote_end + settings.timelock {
+        if e.ledger().sequence() < proposal_data.vote_end + settings.timelock {
             panic_with_error!(&e, GovernorError::TimelockNotMetError);
         }
 
@@ -203,7 +205,7 @@ impl Governor for GovernorContract {
             .unwrap_or_else(|| panic_with_error!(&e, GovernorError::NonExistentProposalError));
         if proposal_data.status != ProposalStatus::Active {
             if proposal_data.status == ProposalStatus::Pending
-                && proposal_data.vote_start <= e.ledger().timestamp()
+                && proposal_data.vote_start <= e.ledger().sequence()
             {
                 proposal_data.status = ProposalStatus::Active;
                 storage::set_proposal_data(&e, &proposal_id, &proposal_data);

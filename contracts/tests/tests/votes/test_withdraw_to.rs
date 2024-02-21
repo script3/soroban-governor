@@ -13,9 +13,12 @@ fn test_withdraw_to() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
+    let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (votes_id, votes_client) = create_token_votes(&e, &token_id);
+    let (votes_id, votes_client) = create_token_votes(&e, &token_id, &governor);
+
+    votes_client.set_vote_sequence(&(e.ledger().sequence() + 1000 - 1));
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&samwise, &initial_balance);
@@ -23,7 +26,7 @@ fn test_withdraw_to() {
     let deposit_amount = 123_7654321;
     votes_client.deposit_for(&samwise, &deposit_amount);
 
-    e.jump_with_sequence(1000);
+    e.jump(1000);
 
     let withdraw_amount = 100 * 10i128.pow(7);
     votes_client.withdraw_to(&samwise, &withdraw_amount);
@@ -58,11 +61,7 @@ fn test_withdraw_to() {
         deposit_amount - withdraw_amount
     );
     assert_eq!(
-        votes_client.get_past_votes(&samwise, &(e.ledger().timestamp())),
-        deposit_amount - withdraw_amount
-    );
-    assert_eq!(
-        votes_client.get_past_votes(&samwise, &(e.ledger().timestamp() - 1)),
+        votes_client.get_past_votes(&samwise, &(e.ledger().sequence() - 1)),
         deposit_amount
     );
     assert_eq!(
@@ -112,9 +111,10 @@ fn test_withdraw_to_full_balance() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
+    let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (votes_id, votes_client) = create_token_votes(&e, &token_id);
+    let (votes_id, votes_client) = create_token_votes(&e, &token_id, &governor);
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&samwise, &initial_balance);
@@ -122,7 +122,7 @@ fn test_withdraw_to_full_balance() {
     let deposit_amount = 123_7654321;
     votes_client.deposit_for(&samwise, &deposit_amount);
 
-    e.jump_with_sequence(1000);
+    e.jump(1000);
 
     votes_client.withdraw_to(&samwise, &deposit_amount);
 
@@ -142,9 +142,10 @@ fn test_withdraw_to_negative_amount() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
+    let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_token_votes(&e, &token_id);
+    let (_, votes_client) = create_token_votes(&e, &token_id, &governor);
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&samwise, &initial_balance);
@@ -152,7 +153,7 @@ fn test_withdraw_to_negative_amount() {
     let deposit_amount = 123_7654321;
     votes_client.deposit_for(&samwise, &deposit_amount);
 
-    e.jump_with_sequence(1000);
+    e.jump(1000);
 
     let withdraw_amount = -1 * 10i128.pow(7);
     votes_client.withdraw_to(&samwise, &withdraw_amount);
@@ -167,9 +168,10 @@ fn test_withdraw_to_more_than_balance() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
+    let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_token_votes(&e, &token_id);
+    let (_, votes_client) = create_token_votes(&e, &token_id, &governor);
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&samwise, &initial_balance);
@@ -177,7 +179,7 @@ fn test_withdraw_to_more_than_balance() {
     let deposit_amount = 123_7654321;
     votes_client.deposit_for(&samwise, &deposit_amount);
 
-    e.jump_with_sequence(1000);
+    e.jump(1000);
 
     let withdraw_amount = deposit_amount + 1;
     votes_client.withdraw_to(&samwise, &withdraw_amount);

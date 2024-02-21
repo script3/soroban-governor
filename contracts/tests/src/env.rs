@@ -3,13 +3,11 @@ use soroban_sdk::{
     Env,
 };
 
-pub trait EnvTestUtils {
-    /// Jump the ledger time by the given amount of time. Don't advance the sequence number.
-    fn jump(&self, time: u64);
+use crate::ONE_DAY_LEDGERS;
 
-    /// Jump the ledger time and sequence number by the given amount of time.
-    /// Assumes 5 seconds per ledger.
-    fn jump_with_sequence(&self, time: u64);
+pub trait EnvTestUtils {
+    /// Jump the env by the given amount of ledgers. Assumes 5 seconds per ledger.
+    fn jump(&self, ledgers: u32);
 
     /// Set the ledger to the default LedgerInfo
     ///
@@ -19,30 +17,16 @@ pub trait EnvTestUtils {
 }
 
 impl EnvTestUtils for Env {
-    fn jump(&self, time: u64) {
+    fn jump(&self, ledgers: u32) {
         self.ledger().set(LedgerInfo {
-            timestamp: self.ledger().timestamp().saturating_add(time),
+            timestamp: self.ledger().timestamp().saturating_add(ledgers as u64 * 5),
             protocol_version: 20,
-            sequence_number: self.ledger().sequence(),
+            sequence_number: self.ledger().sequence().saturating_add(ledgers),
             network_id: Default::default(),
             base_reserve: 10,
-            min_temp_entry_ttl: 999999,
-            min_persistent_entry_ttl: 999999,
-            max_entry_ttl: 9999999,
-        });
-    }
-
-    fn jump_with_sequence(&self, time: u64) {
-        let blocks = time / 5;
-        self.ledger().set(LedgerInfo {
-            timestamp: self.ledger().timestamp().saturating_add(time),
-            protocol_version: 20,
-            sequence_number: self.ledger().sequence().saturating_add(blocks as u32),
-            network_id: Default::default(),
-            base_reserve: 10,
-            min_temp_entry_ttl: 999999,
-            min_persistent_entry_ttl: 999999,
-            max_entry_ttl: 9999999,
+            min_temp_entry_ttl: 10 * ONE_DAY_LEDGERS,
+            min_persistent_entry_ttl: 10 * ONE_DAY_LEDGERS,
+            max_entry_ttl: 365 * ONE_DAY_LEDGERS,
         });
     }
 
@@ -53,9 +37,9 @@ impl EnvTestUtils for Env {
             sequence_number: 100,
             network_id: Default::default(),
             base_reserve: 10,
-            min_temp_entry_ttl: 999999,
-            min_persistent_entry_ttl: 500000,
-            max_entry_ttl: 9999999,
+            min_temp_entry_ttl: 10 * ONE_DAY_LEDGERS,
+            min_persistent_entry_ttl: 10 * ONE_DAY_LEDGERS,
+            max_entry_ttl: 365 * ONE_DAY_LEDGERS,
         });
     }
 }
