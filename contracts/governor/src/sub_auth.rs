@@ -13,7 +13,7 @@ pub fn create_sub_auth(e: &Env, sub_auth: &Vec<SubCalldata>) -> Vec<InvokerContr
                 fn_name: call_data.function,
                 args: call_data.args,
             },
-            sub_invocations: create_sub_auth(&e, &call_data.sub_auth.clone()),
+            sub_invocations: create_sub_auth(&e, &call_data.sub_auth),
         });
         sub_auth_vec.push_back(pre_auth_entry);
     }
