@@ -12,7 +12,7 @@ This document outlines the lifecycle of a proposal made using the Soroban Govern
 
 1. Once a proposal is created, and the `vote_delay` expires it enters the voting period.
 2. During the voting period, DAO members can cast their votes in favor or against the proposal.
-3. Each member's voting power is determined by the number of governance tokens they hold.
+3. Each member's voting power is determined by the number of governance tokens they hold and the amount of governance tokens delegated to them.
 4. The voting period typically lasts for a specified number of blocks defined by the `voting_period` Governance setting stored on the Governor contract.
 
 ## Voting Closure

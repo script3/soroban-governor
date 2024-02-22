@@ -14,7 +14,7 @@ TODO: should we reccomend the CLI for this?
 
 Now that you've deployed your Governor and Votes contracts, you need to initialize them.
 
-The Votes contract can be initialized with the `initialize()` function. This function takes a single argument, `token`, which is the address of the token contract the DAO uses for voting.
+The Votes contract can be initialized with the `initialize()` function. This function takes a single argument, `token`, which is the address of the underlying token contract the Votes contract will support.
 
 The Governor contract is also initialized with the `initialize()` function. This function takes two arguments:
 
