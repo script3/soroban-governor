@@ -1,8 +1,6 @@
 use soroban_sdk::{
-    auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation},
-    contract, contractimpl, panic_with_error,
-    unwrap::UnwrapOptimized,
-    vec, Address, Env, String, Val, Vec,
+    contract, contractimpl, panic_with_error, unwrap::UnwrapOptimized, Address, Env, String, Val,
+    Vec,
 };
 
 use crate::{
@@ -12,6 +10,7 @@ use crate::{
     events::GovernorEvents,
     governor::Governor,
     storage,
+    sub_auth::create_sub_auth,
     types::{
         Calldata, GovernorSettings, Proposal, ProposalConfig, ProposalData, ProposalStatus,
         SubCalldata, VoteCount,
@@ -162,18 +161,7 @@ impl Governor for GovernorContract {
         }
 
         let proposal_config = storage::get_proposal_config(&e, &proposal_id).unwrap_optimized();
-        let mut pre_auth_vec: Vec<InvokerContractAuthEntry> = vec![&e];
-        for call_data in proposal_config.sub_calldata {
-            let pre_auth_entry = InvokerContractAuthEntry::Contract(SubContractInvocation {
-                context: ContractContext {
-                    contract: call_data.contract_id,
-                    fn_name: call_data.function,
-                    args: call_data.args,
-                },
-                sub_invocations: vec![&e],
-            });
-            pre_auth_vec.push_back(pre_auth_entry);
-        }
+        let pre_auth_vec = create_sub_auth(&e, &proposal_config.sub_calldata);
         e.authorize_as_current_contract(pre_auth_vec);
         e.invoke_contract::<Val>(
             &proposal_config.calldata.contract_id,
