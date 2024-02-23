@@ -10,6 +10,7 @@ pub mod errors;
 pub mod events;
 pub mod governor;
 pub mod storage;
+pub mod sub_auth;
 pub mod types;
 
 pub use contract::*;

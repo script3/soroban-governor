@@ -3,7 +3,6 @@ use soroban_sdk::{contract, contracterror, contractimpl, panic_with_error, Addre
 
 use crate::storage;
 
-/// The error codes for the contract.
 #[contracterror]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum ContractError {
@@ -35,12 +34,23 @@ impl SubcallContract {
         token_client.transfer(&governor, &e.current_contract_address(), &amount);
     }
 
-    pub fn call(e: Env, amount: i128) {
+    pub fn no_auth_sc(e: Env, amount: i128) {
         let governor = storage::get_governor(&e);
-        governor.require_auth();
 
         let token = storage::get_token(&e);
         let token_client = TokenClient::new(&e, &token);
-        token_client.transfer(&e.current_contract_address(), &governor, &amount);
+        token_client.transfer(&governor, &e.current_contract_address(), &amount);
+    }
+
+    pub fn call_subcall(e: Env, subcall_address: Address, amount: i128, auth: bool) {
+        let governor = storage::get_governor(&e);
+        governor.require_auth();
+
+        let subcall_client = SubcallContractClient::new(&e, &subcall_address);
+        if auth {
+            subcall_client.subcall(&amount);
+        } else {
+            subcall_client.no_auth_sc(&amount);
+        }
     }
 }
