@@ -3,7 +3,7 @@ use soroban_sdk::{testutils::Address as _, Address, Env, Error};
 use tests::{
     common::create_stellar_token,
     env::EnvTestUtils,
-    votes::{create_token_votes, create_token_votes_wasm},
+    votes::{create_wrapped_token_votes, create_wrapped_token_votes_wasm},
     ONE_DAY_LEDGERS,
 };
 
@@ -20,7 +20,7 @@ fn test_get_past() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_token_votes(&e, &token_id, &governor);
+    let (_, votes_client) = create_wrapped_token_votes(&e, &token_id, &governor);
 
     // setup vote ledgers - do a ledger before each action to verify the actions
     // occuring after the vote starts are recorded properly
@@ -167,7 +167,7 @@ fn test_get_past_same_sequence_as_ledger() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_token_votes(&e, &token_id, &governor);
+    let (_, votes_client) = create_wrapped_token_votes(&e, &token_id, &governor);
 
     let cur_ledger = e.ledger().sequence();
     votes_client.set_vote_sequence(&(cur_ledger + 99));
@@ -193,15 +193,21 @@ fn test_get_past_same_sequence_as_ledger() {
     assert_eq!(votes_client.get_votes(&samwise), deposit_amount_samwise);
 
     assert_eq!(
-        votes_client.try_get_past_total_supply(&e.ledger().sequence()).err(),
+        votes_client
+            .try_get_past_total_supply(&e.ledger().sequence())
+            .err(),
         Some(Ok(Error::from_contract_error(103)))
     );
     assert_eq!(
-        votes_client.try_get_past_votes(&frodo, &e.ledger().sequence()).err(),
+        votes_client
+            .try_get_past_votes(&frodo, &e.ledger().sequence())
+            .err(),
         Some(Ok(Error::from_contract_error(103)))
     );
     assert_eq!(
-        votes_client.try_get_past_votes(&samwise, &e.ledger().sequence()).err(),
+        votes_client
+            .try_get_past_votes(&samwise, &e.ledger().sequence())
+            .err(),
         Some(Ok(Error::from_contract_error(103)))
     );
 }
@@ -221,7 +227,7 @@ fn test_past_checkpoints_get_pruned() {
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
     // @dev: Test with wasm version due to omission of code path in the happy path
-    let (_, votes_client) = create_token_votes_wasm(&e, &token_id, &governor);
+    let (_, votes_client) = create_wrapped_token_votes_wasm(&e, &token_id, &governor);
 
     // setup vote ledgers - do a ledger before each action to verify the actions
     // occuring after the vote starts are recorded properly

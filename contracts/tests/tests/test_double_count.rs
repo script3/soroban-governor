@@ -11,10 +11,9 @@ use tests::{
     mocks::create_mock_subcall_contract_wasm,
 };
 
-
 /// @dev
 /// This test explicitly checks that votes are not double counted. However, this also
-/// prevents any potential flash loan attack, where a user could borrow tokens, vote, 
+/// prevents any potential flash loan attack, where a user could borrow tokens, vote,
 /// and return them interest free.
 #[test]
 fn test_double_count() {
@@ -98,7 +97,7 @@ fn test_double_count() {
     // frodo will attempt to perform a double vote with samwise
     // frodo mints more tokens, votes, sends them to samwise, and then
     // samwise votes with them, to pass the proposal
-    
+
     // frodo mints more tokens
     let double_vote_amount = 9 * 10i128.pow(7);
     token_client.mint(&frodo, &double_vote_amount);
@@ -126,7 +125,10 @@ fn test_double_count() {
 
     // verify proposal votes
     let proposal_votes = governor_client.get_proposal_votes(&proposal_id);
-    assert_eq!(proposal_votes.votes_for, frodo_votes + samwise_votes + double_vote_amount);
+    assert_eq!(
+        proposal_votes.votes_for,
+        frodo_votes + samwise_votes + double_vote_amount
+    );
     assert_eq!(proposal_votes.votes_against, pippin_votes * 2);
     assert_eq!(proposal_votes.votes_abstained, 0);
 }

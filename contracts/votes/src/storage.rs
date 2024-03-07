@@ -16,11 +16,16 @@ pub(crate) const BALANCE_LIFETIME_THRESHOLD: u32 = BALANCE_BUMP_AMOUNT - DAY_IN_
 
 const IS_INIT_KEY: Symbol = symbol_short!("IsInit");
 const GOV_KEY: Symbol = symbol_short!("GOV");
-const TOKEN_KEY: Symbol = symbol_short!("TOKEN");
 const METADATA_KEY: Symbol = symbol_short!("METADATA");
 const TOTAL_SUPPLY_KEY: Symbol = symbol_short!("SUPPLY");
 const TOTAL_SUPPLY_CHECK_KEY: Symbol = symbol_short!("SPLYCHECK");
 const VOTE_LEDGERS_KEY: Symbol = symbol_short!("VOTE_SEQ");
+
+#[cfg(feature = "admin")]
+const ADMIN_KEY: Symbol = symbol_short!("ADMIN");
+
+#[cfg(feature = "wrapped")]
+const TOKEN_KEY: Symbol = symbol_short!("TOKEN");
 
 #[derive(Clone)]
 #[contracttype]
@@ -121,16 +126,6 @@ pub fn set_governor(e: &Env, address: &Address) {
     e.storage().instance().set(&GOV_KEY, address);
 }
 
-// Token
-
-pub fn get_token(e: &Env) -> Address {
-    e.storage().instance().get(&TOKEN_KEY).unwrap_optimized()
-}
-
-pub fn set_token(e: &Env, address: &Address) {
-    e.storage().instance().set(&TOKEN_KEY, address);
-}
-
 // Metadata
 
 pub fn get_metadata(e: &Env) -> TokenMetadata {
@@ -139,6 +134,30 @@ pub fn get_metadata(e: &Env) -> TokenMetadata {
 
 pub fn set_metadata(e: &Env, metadata: &TokenMetadata) {
     e.storage().instance().set(&METADATA_KEY, metadata);
+}
+
+// --- Admin
+
+#[cfg(feature = "admin")]
+pub fn get_admin(e: &Env) -> Address {
+    e.storage().instance().get(&ADMIN_KEY).unwrap_optimized()
+}
+
+#[cfg(feature = "admin")]
+pub fn set_admin(e: &Env, address: &Address) {
+    e.storage().instance().set(&ADMIN_KEY, address);
+}
+
+// --- Wrapped Token
+
+#[cfg(feature = "wrapped")]
+pub fn get_token(e: &Env) -> Address {
+    e.storage().instance().get(&TOKEN_KEY).unwrap_optimized()
+}
+
+#[cfg(feature = "wrapped")]
+pub fn set_token(e: &Env, address: &Address) {
+    e.storage().instance().set(&TOKEN_KEY, address);
 }
 
 //********** Persistent **********//

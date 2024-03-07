@@ -26,7 +26,8 @@ pub fn create_governor<'a>(
 ) -> (Address, Address, Address) {
     let governor_address = e.register_contract(None, GovernorContract {});
     let (underlying_token, _) = common::create_stellar_token(e, admin);
-    let (vote_address, _) = votes::create_token_votes(e, &underlying_token, &governor_address);
+    let (vote_address, _) =
+        votes::create_wrapped_token_votes(e, &underlying_token, &governor_address);
     let govenor_client: GovernorContractClient<'a> =
         GovernorContractClient::new(&e, &governor_address);
     govenor_client.initialize(&vote_address, settings);
@@ -47,11 +48,32 @@ pub fn create_governor_wasm<'a>(
 ) -> (Address, Address, Address) {
     let governor_address = e.register_contract_wasm(None, governor_contract_wasm::WASM);
     let (underlying_token, _) = common::create_stellar_token(e, admin);
-    let (vote_address, _) = votes::create_token_votes_wasm(e, &underlying_token, &governor_address);
+    let (vote_address, _) =
+        votes::create_wrapped_token_votes_wasm(e, &underlying_token, &governor_address);
     let govenor_client: GovernorContractClient<'a> =
         GovernorContractClient::new(&e, &governor_address);
     govenor_client.initialize(&vote_address, settings);
     return (governor_address, underlying_token, vote_address);
+}
+
+/// Create a governor contract with the wasm contract and a soroban vote token
+///
+/// Returns (governor, vote_token, vote_token)
+///
+/// ### Arguments
+/// * `admin` - The address of the admin
+/// * `settings` - The settings for the governor
+pub fn create_soroban_governor_wasm<'a>(
+    e: &Env,
+    admin: &Address,
+    settings: &GovernorSettings,
+) -> (Address, Address) {
+    let governor_address = e.register_contract_wasm(None, governor_contract_wasm::WASM);
+    let (vote_address, _) = votes::create_soroban_token_votes_wasm(e, &admin, &governor_address);
+    let govenor_client: GovernorContractClient<'a> =
+        GovernorContractClient::new(&e, &governor_address);
+    govenor_client.initialize(&vote_address, settings);
+    return (governor_address, vote_address);
 }
 
 /// Default governor settings

@@ -3,7 +3,7 @@ use soroban_sdk::{
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, Events},
     vec, Address, Env, Error, IntoVal, Symbol, Val,
 };
-use tests::{common::create_stellar_token, env::EnvTestUtils, votes::create_token_votes};
+use tests::{common::create_stellar_token, env::EnvTestUtils, votes::create_wrapped_token_votes};
 
 #[test]
 fn test_delegation() {
@@ -17,7 +17,7 @@ fn test_delegation() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (votes_id, votes_client) = create_token_votes(&e, &token_id, &governor);
+    let (votes_id, votes_client) = create_wrapped_token_votes(&e, &token_id, &governor);
 
     votes_client.set_vote_sequence(&(e.ledger().sequence() + 100 - 1));
 
@@ -134,7 +134,7 @@ fn test_delegation_chain_only_delegates_balance() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_token_votes(&e, &token_id, &governor);
+    let (_, votes_client) = create_wrapped_token_votes(&e, &token_id, &governor);
 
     // setup vote ledgers - do a ledger before each action to verify the actions
     // occuring after the vote starts are recorded properly
@@ -265,7 +265,7 @@ fn test_delegation_to_current_delegate() {
     let governor = Address::generate(&e);
 
     let (token_id, _) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_token_votes(&e, &token_id, &governor);
+    let (_, votes_client) = create_wrapped_token_votes(&e, &token_id, &governor);
 
     votes_client.delegate(&samwise, &frodo);
 
