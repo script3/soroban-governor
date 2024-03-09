@@ -89,3 +89,45 @@ impl VoteCount {
         quorum_votes
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_over_quorum() {
+        let e = Env::default();
+        let mut vote_count = VoteCount::new();
+        vote_count.add_vote(&e, 0, 100); // Add 100 votes against (0b100)
+        vote_count.add_vote(&e, 1, 101); // Add 200 votes for (0b010)
+        vote_count.add_vote(&e, 2, 1); // Add 50 votes abstain (0b001)
+
+        // quorum = 100 (10% of 1000)
+        assert!(vote_count.is_over_quorum(1000, 0b111, 1000));
+        assert!(vote_count.is_over_quorum(1000, 0b110, 1000));
+        assert!(vote_count.is_over_quorum(1000, 0b101, 1000));
+        assert!(!vote_count.is_over_quorum(1000, 0b100, 1000));
+        assert!(vote_count.is_over_quorum(1000, 0b011, 1000));
+        assert!(vote_count.is_over_quorum(1000, 0b010, 1000));
+        assert!(!vote_count.is_over_quorum(1000, 0b001, 1000));
+        assert!(!vote_count.is_over_quorum(1000, 0b000, 1000));
+    }
+
+    #[test]
+    fn test_is_over_threshold() {
+        let e = Env::default();
+        let mut vote_count = VoteCount::new();
+        vote_count.add_vote(&e, 0, 100); // Add 100 votes against
+        vote_count.add_vote(&e, 1, 100); // Add 100 votes for
+        vote_count.add_vote(&e, 2, 1000); // Add 50 votes abstain
+
+        // rounds for / against down
+        assert!(!vote_count.is_over_threshold(5000));
+        assert!(vote_count.is_over_threshold(4999));
+
+        vote_count.add_vote(&e, 1, 1);
+        assert!(vote_count.is_over_threshold(5000));
+    }
+}
+
