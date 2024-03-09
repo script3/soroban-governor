@@ -261,10 +261,6 @@ pub fn get_proposal_vote_count(e: &Env, proposal_id: &u32) -> VoteCount {
     {
         result
     } else {
-        VoteCount {
-            votes_for: 0,
-            votes_against: 0,
-            votes_abstained: 0,
-        }
+        VoteCount::new()
     }
 }

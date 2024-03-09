@@ -84,7 +84,7 @@ pub fn default_governor_settings() -> GovernorSettings {
         vote_period: ONE_DAY_LEDGERS * 7,
         timelock: ONE_DAY_LEDGERS,
         quorum: 100,          // 1%
-        counting_type: 4,     // 0x001 (for)
+        counting_type: 2,     // 0x...010 (for)
         vote_threshold: 5100, // 51%
     }
 }

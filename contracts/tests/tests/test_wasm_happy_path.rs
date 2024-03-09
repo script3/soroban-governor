@@ -123,17 +123,17 @@ fn test_wasm_happy_path() {
     assert_eq!(votes_client.total_supply(), total_votes + late_mint_votes);
 
     // frodo votes for, pippin votes against, merry abstains
-    governor_client.vote(&frodo, &proposal_id, &2);
+    governor_client.vote(&frodo, &proposal_id, &1);
     e.jump(ONE_HOUR);
-    governor_client.vote(&pippin, &proposal_id, &1);
+    governor_client.vote(&pippin, &proposal_id, &0);
     e.jump(ONE_HOUR);
-    governor_client.vote(&merry, &proposal_id, &0);
+    governor_client.vote(&merry, &proposal_id, &2);
     e.jump(ONE_HOUR);
 
     let proposal_votes = governor_client.get_proposal_votes(&proposal_id);
-    assert_eq!(proposal_votes.votes_for, frodo_votes);
-    assert_eq!(proposal_votes.votes_against, pippin_votes);
-    assert_eq!(proposal_votes.votes_abstained, merry_votes);
+    assert_eq!(proposal_votes.against, pippin_votes);
+    assert_eq!(proposal_votes._for, frodo_votes);
+    assert_eq!(proposal_votes.abstain, merry_votes);
 
     // close the proposal
     e.jump(settings.vote_period - 3 * ONE_HOUR);
@@ -259,17 +259,17 @@ fn test_wasm_happy_path_soroban_token() {
     assert_eq!(votes_client.total_supply(), total_votes + late_mint_votes);
 
     // frodo votes for, pippin votes against, merry abstains
-    governor_client.vote(&frodo, &proposal_id, &2);
+    governor_client.vote(&frodo, &proposal_id, &1);
     e.jump(ONE_HOUR);
-    governor_client.vote(&pippin, &proposal_id, &1);
+    governor_client.vote(&pippin, &proposal_id, &0);
     e.jump(ONE_HOUR);
-    governor_client.vote(&merry, &proposal_id, &0);
+    governor_client.vote(&merry, &proposal_id, &2);
     e.jump(ONE_HOUR);
 
     let proposal_votes = governor_client.get_proposal_votes(&proposal_id);
-    assert_eq!(proposal_votes.votes_for, frodo_votes);
-    assert_eq!(proposal_votes.votes_against, pippin_votes);
-    assert_eq!(proposal_votes.votes_abstained, merry_votes);
+    assert_eq!(proposal_votes.against, pippin_votes);
+    assert_eq!(proposal_votes._for, frodo_votes);
+    assert_eq!(proposal_votes.abstain, merry_votes);
 
     // close the proposal
     e.jump(settings.vote_period - 3 * ONE_HOUR);

@@ -24,4 +24,5 @@ pub enum GovernorError {
     TimelockNotMetError = 206,
     CancelActiveProposalError = 207,
     InsufficientVotingUnitsError = 208,
+    AlreadyVotedError = 209,
 }

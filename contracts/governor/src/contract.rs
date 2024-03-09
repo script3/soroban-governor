@@ -4,7 +4,7 @@ use soroban_sdk::{
 };
 
 use crate::{
-    constants::{BPS_SCALAR, MAX_PROPOSAL_LIFETIME, MAX_VOTE_PERIOD},
+    constants::{MAX_PROPOSAL_LIFETIME, MAX_VOTE_PERIOD},
     dependencies::VotesClient,
     errors::GovernorError,
     events::GovernorEvents,
@@ -115,24 +115,12 @@ impl Governor for GovernorContract {
 
         let mut quorum_votes: i128 = 0;
         let vote_count = storage::get_proposal_vote_count(&e, &proposal_id);
-        if settings.counting_type & 0b001 != 0 {
-            quorum_votes += vote_count.votes_abstained;
-        }
-        if settings.counting_type & 0b010 != 0 {
-            quorum_votes += vote_count.votes_against;
-        }
-        if settings.counting_type & 0b100 != 0 {
-            quorum_votes += vote_count.votes_for;
-        }
+        let passed_quorum =
+            vote_count.is_over_quorum(settings.quorum, settings.counting_type, total_vote_supply);
+        let passed_vote_threshold = vote_count.is_over_threshold(settings.vote_threshold);
 
-        let votes_for_bps =
-            (vote_count.votes_for * BPS_SCALAR) / (vote_count.votes_against + vote_count.votes_for);
-        let quorum_bps = (quorum_votes * BPS_SCALAR) / total_vote_supply;
-
-        if quorum_bps >= (settings.quorum as i128)
-            && votes_for_bps >= (settings.vote_threshold as i128)
-        {
-            proposal_data.status = ProposalStatus::Queued;
+        if passed_vote_threshold && passed_quorum {
+            proposal_data.status = ProposalStatus::Successful;
             storage::set_proposal_data(&e, &proposal_id, &proposal_data);
             GovernorEvents::proposal_queued(
                 &e,
@@ -202,30 +190,22 @@ impl Governor for GovernorContract {
             }
         }
 
+        if storage::get_voter_status(&e, &voter, &proposal_id).is_some() {
+            panic_with_error!(&e, GovernorError::AlreadyVotedError);
+        }
+
         let voter_power = VotesClient::new(&e, &storage::get_voter_token_address(&e))
             .get_past_votes(&voter, &proposal_data.vote_start);
+        if voter_power <= 0 {
+            panic_with_error!(&e, GovernorError::InsufficientVotingUnitsError);
+        }
+
         let mut vote_count = storage::get_proposal_vote_count(&e, &proposal_id);
-        let voter_status = storage::get_voter_status(&e, &voter, &proposal_id);
-
-        // Check if voter has already voted and remove previous vote from count
-        if let Some(voter_status) = voter_status {
-            match voter_status {
-                0 => vote_count.votes_abstained -= voter_power,
-                1 => vote_count.votes_against -= voter_power,
-                2 => vote_count.votes_for -= voter_power,
-                _ => (),
-            }
-        }
-
-        match support {
-            0 => vote_count.votes_abstained += voter_power,
-            1 => vote_count.votes_against += voter_power,
-            2 => vote_count.votes_for += voter_power,
-            _ => panic_with_error!(&e, GovernorError::InvalidProposalSupportError),
-        }
+        vote_count.add_vote(&e, support, voter_power);
 
         storage::set_voter_status(&e, &voter, &proposal_id, &support);
         storage::set_proposal_vote_count(&e, &proposal_id, &vote_count);
+
         GovernorEvents::vote_cast(&e, proposal_id, voter, support, voter_power);
     }
 

@@ -12,5 +12,6 @@ pub mod governor;
 pub mod storage;
 pub mod sub_auth;
 pub mod types;
+pub mod vote_count;
 
 pub use contract::*;

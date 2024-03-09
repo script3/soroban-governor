@@ -45,8 +45,8 @@ fn test_close_proposal_queued() {
     let proposal_id =
         governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
     e.jump(settings.vote_delay + 1);
-    governor_client.vote(&samwise, &proposal_id, &2);
-    governor_client.vote(&pippin, &proposal_id, &1);
+    governor_client.vote(&samwise, &proposal_id, &1);
+    governor_client.vote(&pippin, &proposal_id, &0);
     e.jump(settings.vote_period - 1);
 
     governor_client.close(&proposal_id);
@@ -107,8 +107,8 @@ fn test_close_quorum_not_met() {
     let proposal_id =
         governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
     e.jump(settings.vote_delay + 1);
-    governor_client.vote(&samwise, &proposal_id, &2);
-    governor_client.vote(&pippin, &proposal_id, &1);
+    governor_client.vote(&samwise, &proposal_id, &1);
+    governor_client.vote(&pippin, &proposal_id, &0);
     e.jump(settings.vote_period - 1);
 
     governor_client.close(&proposal_id);
@@ -165,8 +165,8 @@ fn test_close_vote_threshold_not_met() {
     let proposal_id =
         governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
     e.jump(settings.vote_delay + 1);
-    governor_client.vote(&samwise, &proposal_id, &2);
-    governor_client.vote(&pippin, &proposal_id, &1);
+    governor_client.vote(&samwise, &proposal_id, &1);
+    governor_client.vote(&pippin, &proposal_id, &0);
     e.jump(settings.vote_period - 1);
 
     governor_client.close(&proposal_id);
@@ -229,9 +229,9 @@ fn test_close_tracks_quorum_with_counting_type() {
     let proposal_id =
         governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
     e.jump(settings.vote_delay + 1);
-    governor_client.vote(&samwise, &proposal_id, &2);
-    governor_client.vote(&pippin, &proposal_id, &1);
-    governor_client.vote(&merry, &proposal_id, &0);
+    governor_client.vote(&samwise, &proposal_id, &1);
+    governor_client.vote(&pippin, &proposal_id, &0);
+    governor_client.vote(&merry, &proposal_id, &2);
     e.jump(settings.vote_period);
 
     governor_client.close(&proposal_id);
@@ -292,7 +292,7 @@ fn test_close_vote_period_unfinished() {
     let proposal_id =
         governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
     e.jump(settings.vote_delay + 1);
-    governor_client.vote(&samwise, &proposal_id, &2);
+    governor_client.vote(&samwise, &proposal_id, &1);
     e.jump(settings.vote_period - 2);
 
     governor_client.close(&proposal_id);

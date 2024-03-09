@@ -59,8 +59,8 @@ fn test_execute() {
     // setup a proposal that is ready to be executed
     let proposal_id = governor_client.propose(&samwise, &calldata, &vec![&e], &title, &description);
     e.jump(settings.vote_delay + 1);
-    governor_client.vote(&samwise, &proposal_id, &2);
-    governor_client.vote(&pippin, &proposal_id, &1);
+    governor_client.vote(&samwise, &proposal_id, &1);
+    governor_client.vote(&pippin, &proposal_id, &0);
     e.jump(settings.vote_period);
     governor_client.close(&proposal_id);
     e.jump(settings.timelock);
@@ -153,7 +153,7 @@ fn test_execute_call_subcall_auth() {
     let proposal_id =
         governor_client.propose(&frodo, &calldata, &sub_calldata, &title, &description);
     e.jump(settings.vote_delay + 1);
-    governor_client.vote(&frodo, &proposal_id, &2);
+    governor_client.vote(&frodo, &proposal_id, &1);
     e.jump(settings.vote_period);
     governor_client.close(&proposal_id);
     e.jump(settings.timelock);
@@ -213,7 +213,7 @@ fn test_execute_call_subcall_no_auth() {
     let proposal_id =
         governor_client.propose(&frodo, &calldata, &sub_calldata, &title, &description);
     e.jump(settings.vote_delay + 1);
-    governor_client.vote(&frodo, &proposal_id, &2);
+    governor_client.vote(&frodo, &proposal_id, &1);
     e.jump(settings.vote_period);
     governor_client.close(&proposal_id);
     e.jump(settings.timelock);
@@ -281,8 +281,8 @@ fn test_execute_proposal_not_queued() {
 
     let proposal_id = governor_client.propose(&samwise, &calldata, &vec![&e], &title, &description);
     e.jump(settings.vote_delay + 1);
-    governor_client.vote(&samwise, &proposal_id, &2);
-    governor_client.vote(&pippin, &proposal_id, &1);
+    governor_client.vote(&samwise, &proposal_id, &1);
+    governor_client.vote(&pippin, &proposal_id, &0);
     e.jump(settings.vote_period - 1);
     e.jump(settings.timelock);
 
@@ -334,8 +334,8 @@ fn test_execute_timelock_not_met() {
 
     let proposal_id = governor_client.propose(&samwise, &calldata, &vec![&e], &title, &description);
     e.jump(settings.vote_delay + 1);
-    governor_client.vote(&samwise, &proposal_id, &2);
-    governor_client.vote(&pippin, &proposal_id, &1);
+    governor_client.vote(&samwise, &proposal_id, &1);
+    governor_client.vote(&pippin, &proposal_id, &0);
     e.jump(settings.vote_period - 1);
     governor_client.close(&proposal_id);
     e.jump(settings.timelock - 1);

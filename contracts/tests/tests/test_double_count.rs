@@ -119,16 +119,16 @@ fn test_double_count() {
     // everyone can vote and things that occured on the block of the vote start are tracked
 
     votes_client.transfer(&frodo, &pippin, &1);
-    governor_client.vote(&frodo, &proposal_id, &2);
-    governor_client.vote(&samwise, &proposal_id, &2);
-    governor_client.vote(&pippin, &proposal_id, &1);
+    governor_client.vote(&frodo, &proposal_id, &1);
+    governor_client.vote(&samwise, &proposal_id, &1);
+    governor_client.vote(&pippin, &proposal_id, &0);
 
     // verify proposal votes
     let proposal_votes = governor_client.get_proposal_votes(&proposal_id);
+    assert_eq!(proposal_votes.against, pippin_votes * 2);
     assert_eq!(
-        proposal_votes.votes_for,
+        proposal_votes._for,
         frodo_votes + samwise_votes + double_vote_amount
     );
-    assert_eq!(proposal_votes.votes_against, pippin_votes * 2);
-    assert_eq!(proposal_votes.votes_abstained, 0);
+    assert_eq!(proposal_votes.abstain, 0);
 }

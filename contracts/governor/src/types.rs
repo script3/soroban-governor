@@ -73,13 +73,21 @@ pub struct ProposalData {
     pub status: ProposalStatus,
 }
 
+/// The types of votes that can be cast
+#[repr(u8)]
+pub enum VoteType {
+    Against = 0,
+    For = 1,
+    Abstain = 2,
+}
+
 // Stores proposal results
 #[derive(Clone)]
 #[contracttype]
 pub struct VoteCount {
-    pub votes_for: i128,
-    pub votes_against: i128,
-    pub votes_abstained: i128,
+    pub against: i128,
+    pub _for: i128,
+    pub abstain: i128,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
