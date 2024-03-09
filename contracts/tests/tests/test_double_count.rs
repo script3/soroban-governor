@@ -1,8 +1,8 @@
 #[cfg(test)]
 use sep_41_token::testutils::MockTokenClient;
-use soroban_governor::types::{Calldata, SubCalldata};
+use soroban_governor::types::{Calldata, ProposalAction};
 use soroban_governor::GovernorContractClient;
-use soroban_sdk::{testutils::Address as _, vec, Address, Env, Error, IntoVal, Symbol, Vec};
+use soroban_sdk::{testutils::Address as _, vec, Address, Env, Error, IntoVal, Symbol};
 use soroban_votes::TokenVotesClient;
 use tests::governor::create_governor;
 use tests::{
@@ -60,29 +60,28 @@ fn test_double_count() {
     assert_eq!(votes_client.total_supply(), total_votes);
 
     // create a proposal
-    let (_, _, title, description) = default_proposal_data(&e);
+    let (title, description, _) = default_proposal_data(&e);
     let call_amount: i128 = 100 * 10i128.pow(7);
-    let calldata = Calldata {
+    let action = ProposalAction::Calldata(Calldata {
         contract_id: subcall_address.clone(),
         function: Symbol::new(&e, "subcall"),
         args: (call_amount.clone(),).into_val(&e),
-    };
-    let sub_calldata: Vec<SubCalldata> = vec![
-        &e,
-        SubCalldata {
-            contract_id: token_address,
-            function: Symbol::new(&e, "transfer"),
-            args: (
-                governor_address.clone(),
-                subcall_address.clone(),
-                call_amount.clone(),
-            )
-                .into_val(&e),
-            sub_auth: vec![&e],
-        },
-    ];
-    let proposal_id =
-        governor_client.propose(&frodo, &calldata, &sub_calldata, &title, &description);
+        auths: vec![
+            &e,
+            Calldata {
+                contract_id: token_address,
+                function: Symbol::new(&e, "transfer"),
+                args: (
+                    governor_address.clone(),
+                    subcall_address.clone(),
+                    call_amount.clone(),
+                )
+                    .into_val(&e),
+                auths: vec![&e],
+            },
+        ],
+    });
+    let proposal_id = governor_client.propose(&frodo, &title, &description, &action);
 
     // pass time to one ledger before vote start
     e.jump(settings.vote_delay - 1);

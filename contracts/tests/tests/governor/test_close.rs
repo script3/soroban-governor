@@ -40,10 +40,9 @@ fn test_close_proposal_queued() {
     let pippin_votes = 100 * 10i128.pow(7);
     votes_client.transfer(&frodo, &pippin, &pippin_votes);
 
-    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+    let (title, description, action) = default_proposal_data(&e);
 
-    let proposal_id =
-        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
     governor_client.vote(&samwise, &proposal_id, &1);
     governor_client.vote(&pippin, &proposal_id, &0);
@@ -56,7 +55,7 @@ fn test_close_proposal_queued() {
 
     // verify chain results
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
-    assert_eq!(proposal.data.status, ProposalStatus::Queued);
+    assert_eq!(proposal.data.status, ProposalStatus::Successful);
 
     // verify events
     let events = e.events().all();
@@ -102,10 +101,9 @@ fn test_close_quorum_not_met() {
     let pippin_votes = 10 * 10i128.pow(7);
     votes_client.transfer(&frodo, &pippin, &pippin_votes);
 
-    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+    let (title, description, action) = default_proposal_data(&e);
 
-    let proposal_id =
-        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
     governor_client.vote(&samwise, &proposal_id, &1);
     governor_client.vote(&pippin, &proposal_id, &0);
@@ -160,10 +158,9 @@ fn test_close_vote_threshold_not_met() {
     let pippin_votes = 200 * 10i128.pow(7);
     votes_client.transfer(&frodo, &pippin, &pippin_votes);
 
-    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+    let (title, description, action) = default_proposal_data(&e);
 
-    let proposal_id =
-        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
     governor_client.vote(&samwise, &proposal_id, &1);
     governor_client.vote(&pippin, &proposal_id, &0);
@@ -224,10 +221,9 @@ fn test_close_tracks_quorum_with_counting_type() {
     let merry_votes = 90 * 10i128.pow(7);
     votes_client.transfer(&frodo, &merry, &merry_votes);
 
-    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+    let (title, description, action) = default_proposal_data(&e);
 
-    let proposal_id =
-        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
     governor_client.vote(&samwise, &proposal_id, &1);
     governor_client.vote(&pippin, &proposal_id, &0);
@@ -238,7 +234,7 @@ fn test_close_tracks_quorum_with_counting_type() {
 
     // verify chain results
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
-    assert_eq!(proposal.data.status, ProposalStatus::Queued);
+    assert_eq!(proposal.data.status, ProposalStatus::Successful);
 }
 
 #[test]
@@ -287,10 +283,9 @@ fn test_close_vote_period_unfinished() {
     token_client.mint(&samwise, &samwise_mint_amount);
     votes_client.deposit_for(&samwise, &samwise_mint_amount);
 
-    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+    let (title, description, action) = default_proposal_data(&e);
 
-    let proposal_id =
-        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
     governor_client.vote(&samwise, &proposal_id, &1);
     e.jump(settings.vote_period - 2);

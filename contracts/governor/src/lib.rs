@@ -9,8 +9,8 @@ pub mod dependencies;
 pub mod errors;
 pub mod events;
 pub mod governor;
+pub mod proposal_config;
 pub mod storage;
-pub mod sub_auth;
 pub mod types;
 pub mod vote_count;
 

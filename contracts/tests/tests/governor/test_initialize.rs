@@ -55,6 +55,7 @@ fn test_initalize_proprosal_exceeds_time_length() {
         vote_delay: 500000,
         vote_period: 500000,
         timelock: 814401,
+        grace_period: 500000,
         quorum: 5000,
         counting_type: 6000,
         vote_threshold: 7000,

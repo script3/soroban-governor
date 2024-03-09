@@ -1,6 +1,6 @@
 use soroban_sdk::{Address, Env, String, Symbol};
 
-use crate::types::Calldata;
+use crate::types::ProposalAction;
 
 pub struct GovernorEvents {}
 
@@ -11,16 +11,17 @@ impl GovernorEvents {
     /// to create the proposal.
     ///
     /// - topics - `["proposal_created", proposal_id: u32, proposer: Address]`
-    /// - data - `[title: String, calldata: Calldata]`
+    /// - data - `[title: String, desc: String, action: ProposalAction]`
     pub fn proposal_created(
         e: &Env,
         proposal_id: u32,
         proposer: Address,
         title: String,
-        calldata: Calldata,
+        desc: String,
+        action: ProposalAction,
     ) {
         let topics = (Symbol::new(&e, "proposal_created"), proposal_id, proposer);
-        e.events().publish(topics, (title, calldata));
+        e.events().publish(topics, (title, desc, action));
     }
 
     /// Emitted when a proposal is defeated

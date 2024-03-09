@@ -1,8 +1,8 @@
 #[cfg(test)]
 use sep_41_token::testutils::MockTokenClient;
-use soroban_governor::types::{Calldata, ProposalStatus, SubCalldata};
+use soroban_governor::types::{Calldata, ProposalAction, ProposalStatus};
 use soroban_governor::GovernorContractClient;
-use soroban_sdk::{testutils::Address as _, vec, Address, Env, IntoVal, Symbol, Vec};
+use soroban_sdk::{testutils::Address as _, vec, Address, Env, IntoVal, Symbol};
 use soroban_votes::TokenVotesClient;
 use tests::common::create_stellar_token;
 use tests::governor::create_soroban_governor_wasm;
@@ -60,29 +60,28 @@ fn test_wasm_happy_path() {
     assert_eq!(votes_client.total_supply(), total_votes);
 
     // create a proposal
-    let (_, _, title, description) = default_proposal_data(&e);
+    let (title, description, _) = default_proposal_data(&e);
     let call_amount: i128 = 100 * 10i128.pow(7);
-    let calldata = Calldata {
+    let action = ProposalAction::Calldata(Calldata {
         contract_id: subcall_address.clone(),
         function: Symbol::new(&e, "subcall"),
         args: (call_amount.clone(),).into_val(&e),
-    };
-    let sub_calldata: Vec<SubCalldata> = vec![
-        &e,
-        SubCalldata {
-            contract_id: token_address,
-            function: Symbol::new(&e, "transfer"),
-            args: (
-                governor_address.clone(),
-                subcall_address.clone(),
-                call_amount.clone(),
-            )
-                .into_val(&e),
-            sub_auth: vec![&e],
-        },
-    ];
-    let proposal_id =
-        governor_client.propose(&frodo, &calldata, &sub_calldata, &title, &description);
+        auths: vec![
+            &e,
+            Calldata {
+                contract_id: token_address,
+                function: Symbol::new(&e, "transfer"),
+                args: (
+                    governor_address.clone(),
+                    subcall_address.clone(),
+                    call_amount.clone(),
+                )
+                    .into_val(&e),
+                auths: vec![&e],
+            },
+        ],
+    });
+    let proposal_id = governor_client.propose(&frodo, &title, &description, &action);
 
     // pass some time - samwise delegates to frodo then transfers votes to merry. Merry mints more votes.
     e.jump(settings.vote_delay - ONE_HOUR);
@@ -140,7 +139,7 @@ fn test_wasm_happy_path() {
     governor_client.close(&proposal_id);
 
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
-    assert_eq!(proposal.data.status, ProposalStatus::Queued);
+    assert_eq!(proposal.data.status, ProposalStatus::Successful);
 
     // execute the proposal
     e.jump(settings.timelock);
@@ -198,29 +197,28 @@ fn test_wasm_happy_path_soroban_token() {
     assert_eq!(votes_client.total_supply(), total_votes);
 
     // create a proposal
-    let (_, _, title, description) = default_proposal_data(&e);
+    let (title, description, _) = default_proposal_data(&e);
     let call_amount: i128 = 100 * 10i128.pow(7);
-    let calldata = Calldata {
+    let action = ProposalAction::Calldata(Calldata {
         contract_id: subcall_address.clone(),
         function: Symbol::new(&e, "subcall"),
         args: (call_amount.clone(),).into_val(&e),
-    };
-    let sub_calldata: Vec<SubCalldata> = vec![
-        &e,
-        SubCalldata {
-            contract_id: token_address,
-            function: Symbol::new(&e, "transfer"),
-            args: (
-                governor_address.clone(),
-                subcall_address.clone(),
-                call_amount.clone(),
-            )
-                .into_val(&e),
-            sub_auth: vec![&e],
-        },
-    ];
-    let proposal_id =
-        governor_client.propose(&frodo, &calldata, &sub_calldata, &title, &description);
+        auths: vec![
+            &e,
+            Calldata {
+                contract_id: token_address,
+                function: Symbol::new(&e, "transfer"),
+                args: (
+                    governor_address.clone(),
+                    subcall_address.clone(),
+                    call_amount.clone(),
+                )
+                    .into_val(&e),
+                auths: vec![&e],
+            },
+        ],
+    });
+    let proposal_id = governor_client.propose(&frodo, &title, &description, &action);
 
     // pass some time - samwise delegates to frodo then transfers votes to merry. Merry mints more votes.
     e.jump(settings.vote_delay - ONE_HOUR);
@@ -276,7 +274,7 @@ fn test_wasm_happy_path_soroban_token() {
     governor_client.close(&proposal_id);
 
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
-    assert_eq!(proposal.data.status, ProposalStatus::Queued);
+    assert_eq!(proposal.data.status, ProposalStatus::Successful);
 
     // execute the proposal
     e.jump(settings.timelock);

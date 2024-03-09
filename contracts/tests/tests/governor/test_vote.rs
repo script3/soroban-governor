@@ -36,11 +36,10 @@ fn test_vote() {
     let samwise_votes = 8_000 * 10i128.pow(7);
     votes_client.transfer(&frodo, &samwise, &samwise_votes);
 
-    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+    let (title, description, action) = default_proposal_data(&e);
 
     // setup a proposal that can be voted on
-    let proposal_id =
-        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
 
     let voter_support = 0;
@@ -119,11 +118,10 @@ fn test_vote_user_changes_support() {
     let samwise_votes = 8_000 * 10i128.pow(7);
     votes_client.transfer(&frodo, &samwise, &samwise_votes);
 
-    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+    let (title, description, action) = default_proposal_data(&e);
 
     // setup a proposal that can be voted on
-    let proposal_id =
-        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
 
     let voter_support = 0;
@@ -175,11 +173,10 @@ fn test_vote_multiple_users() {
     let bilbo_votes = 2345 * 10i128.pow(7);
     votes_client.transfer(&frodo, &bilbo, &bilbo_votes);
 
-    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+    let (title, description, action) = default_proposal_data(&e);
 
     // setup a proposal that can be voted on
-    let proposal_id =
-        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
 
     governor_client.vote(&samwise, &proposal_id, &1);
@@ -258,11 +255,10 @@ fn test_vote_delay_not_ended() {
     let samwise_votes = 8_000 * 10i128.pow(7);
     votes_client.transfer(&frodo, &samwise, &samwise_votes);
 
-    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+    let (title, description, action) = default_proposal_data(&e);
 
     // setup a proposal that can be voted on
-    let proposal_id =
-        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay - 1);
 
     governor_client.vote(&samwise, &proposal_id, &1);
@@ -293,11 +289,10 @@ fn test_vote_invalid_support_option() {
     let samwise_votes = 8_000 * 10i128.pow(7);
     votes_client.transfer(&frodo, &samwise, &samwise_votes);
 
-    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+    let (title, description, action) = default_proposal_data(&e);
 
     // setup a proposal that can be voted on
-    let proposal_id =
-        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
 
     governor_client.vote(&samwise, &proposal_id, &3);

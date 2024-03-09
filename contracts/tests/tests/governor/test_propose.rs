@@ -1,6 +1,6 @@
 #[cfg(test)]
 use sep_41_token::testutils::MockTokenClient;
-use soroban_governor::types::ProposalStatus;
+use soroban_governor::types::{ProposalAction, ProposalStatus};
 use soroban_governor::GovernorContractClient;
 use soroban_sdk::{
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, Events},
@@ -13,7 +13,7 @@ use tests::{
 };
 
 #[test]
-fn test_propose() {
+fn test_propose_calldata() {
     let e = Env::default();
     e.mock_all_auths();
 
@@ -30,10 +30,9 @@ fn test_propose() {
     token_client.mint(&samwise, &samwise_mint_amount);
     votes_client.deposit_for(&samwise, &samwise_mint_amount);
 
-    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+    let (title, description, action) = default_proposal_data(&e);
 
-    let proposal_id =
-        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
 
     // verify auth
     assert_eq!(
@@ -47,10 +46,9 @@ fn test_propose() {
                     vec![
                         &e,
                         samwise.to_val(),
-                        calldata.try_into_val(&e).unwrap(),
-                        sub_calldata.to_val(),
                         title.to_val(),
-                        description.to_val()
+                        description.to_val(),
+                        action.try_into_val(&e).unwrap()
                     ]
                 )),
                 sub_invocations: std::vec![]
@@ -62,25 +60,31 @@ fn test_propose() {
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
     assert_eq!(proposal.id, proposal_id);
     assert_eq!(proposal.id, 0);
-    assert_eq!(proposal.config.calldata.function, calldata.function);
-    assert_eq!(proposal.config.calldata.contract_id, calldata.contract_id);
-    assert_eq!(proposal.config.calldata.args, calldata.args);
-    assert_eq!(
-        proposal.config.sub_calldata.get(0).unwrap().contract_id,
-        sub_calldata.get(0).unwrap().contract_id
-    );
-    assert_eq!(
-        proposal.config.sub_calldata.get(0).unwrap().function,
-        sub_calldata.get(0).unwrap().function
-    );
-    assert_eq!(
-        proposal.config.sub_calldata.get(0).unwrap().args,
-        sub_calldata.get(0).unwrap().args
-    );
-    assert_eq!(
-        proposal.config.sub_calldata.get(0).unwrap().sub_auth.len(),
-        sub_calldata.get(0).unwrap().sub_auth.len()
-    );
+    match proposal.config.action {
+        ProposalAction::Calldata(calldata) => {
+            assert_eq!(calldata.contract_id, calldata.contract_id);
+            assert_eq!(calldata.function, calldata.function);
+            assert_eq!(calldata.args, calldata.args);
+            if let ProposalAction::Calldata(action_calldata) = action.clone() {
+                assert_eq!(
+                    calldata.auths.get(0).unwrap().contract_id,
+                    action_calldata.auths.get(0).unwrap().contract_id
+                );
+                assert_eq!(
+                    calldata.auths.get(0).unwrap().function,
+                    action_calldata.auths.get(0).unwrap().function
+                );
+                assert_eq!(
+                    calldata.auths.get(0).unwrap().args,
+                    action_calldata.auths.get(0).unwrap().args
+                );
+                assert_eq!(calldata.auths.get(0).unwrap().auths.len(), 0);
+            } else {
+                assert!(false, "test setup error");
+            }
+        }
+        _ => assert!(false, "expected calldata proposal action"),
+    }
     assert_eq!(proposal.id, 0);
     assert_eq!(proposal.config.proposer, samwise);
     assert_eq!(proposal.config.title, title);
@@ -96,7 +100,12 @@ fn test_propose() {
     // verify events
     let events = e.events().all();
     let tx_events = vec![&e, events.last().unwrap()];
-    let event_data: soroban_sdk::Vec<Val> = vec![&e, title.into_val(&e), calldata.into_val(&e)];
+    let event_data: soroban_sdk::Vec<Val> = vec![
+        &e,
+        title.into_val(&e),
+        description.into_val(&e),
+        action.try_into_val(&e).unwrap(),
+    ];
     assert_eq!(
         tx_events,
         vec![
@@ -135,7 +144,7 @@ fn test_propose_below_proposal_threshold() {
     token_client.mint(&samwise, &samwise_mint_amount);
     votes_client.deposit_for(&samwise, &samwise_mint_amount);
 
-    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+    let (title, description, action) = default_proposal_data(&e);
 
-    governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    governor_client.propose(&samwise, &title, &description, &action);
 }

@@ -1,10 +1,10 @@
 #[cfg(test)]
 use sep_41_token::testutils::MockTokenClient;
-use soroban_governor::types::{Calldata, ProposalStatus, SubCalldata};
+use soroban_governor::types::{Calldata, ProposalAction, ProposalStatus};
 use soroban_governor::GovernorContractClient;
 use soroban_sdk::{
     testutils::{Address as _, Events},
-    vec, Address, Env, IntoVal, Symbol, Vec,
+    vec, Address, Env, IntoVal, Symbol,
 };
 use soroban_votes::TokenVotesClient;
 use tests::mocks::create_mock_subcall_contract_wasm;
@@ -14,7 +14,7 @@ use tests::{
 };
 
 #[test]
-fn test_execute() {
+fn test_execute_calldata_no_auths() {
     let e = Env::default();
     e.set_default_info();
     e.mock_all_auths();
@@ -44,8 +44,8 @@ fn test_execute() {
     let governor_transfer_amount: i128 = 10i128.pow(7);
     token_client.mint(&governor_address, &governor_transfer_amount);
 
-    let (_, _, title, description) = default_proposal_data(&e);
-    let calldata = Calldata {
+    let (title, description, _) = default_proposal_data(&e);
+    let action = ProposalAction::Calldata(Calldata {
         contract_id: token_address,
         function: Symbol::new(&e, "transfer"),
         args: (
@@ -54,10 +54,11 @@ fn test_execute() {
             governor_transfer_amount,
         )
             .into_val(&e),
-    };
+        auths: vec![&e],
+    });
 
     // setup a proposal that is ready to be executed
-    let proposal_id = governor_client.propose(&samwise, &calldata, &vec![&e], &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
     governor_client.vote(&samwise, &proposal_id, &1);
     governor_client.vote(&pippin, &proposal_id, &0);
@@ -93,7 +94,7 @@ fn test_execute() {
 }
 
 #[test]
-fn test_execute_call_subcall_auth() {
+fn test_execute_calldata_auth_chain() {
     let e = Env::default();
     e.set_default_info();
     e.mock_all_auths();
@@ -119,39 +120,38 @@ fn test_execute_call_subcall_auth() {
     votes_client.deposit_for(&frodo, &frodo_votes);
 
     // create a proposal
-    let (_, _, title, description) = default_proposal_data(&e);
+    let (title, description, _) = default_proposal_data(&e);
     let call_amount: i128 = 100 * 10i128.pow(7);
     token_client.mint(&governor_address, &call_amount);
-    let calldata = Calldata {
+    let action = ProposalAction::Calldata(Calldata {
         contract_id: outter_subcall_address.clone(),
         function: Symbol::new(&e, "call_subcall"),
         args: (inner_subcall_address.clone(), call_amount.clone(), true).into_val(&e),
-    };
-    let sub_calldata: Vec<SubCalldata> = vec![
-        &e,
-        SubCalldata {
-            contract_id: inner_subcall_address.clone(),
-            function: Symbol::new(&e, "subcall"),
-            args: (call_amount.clone(),).into_val(&e),
-            sub_auth: vec![
-                &e,
-                SubCalldata {
-                    contract_id: token_address,
-                    function: Symbol::new(&e, "transfer"),
-                    args: (
-                        governor_address.clone(),
-                        inner_subcall_address.clone(),
-                        call_amount.clone(),
-                    )
-                        .into_val(&e),
-                    sub_auth: vec![&e],
-                },
-            ],
-        },
-    ];
+        auths: vec![
+            &e,
+            Calldata {
+                contract_id: inner_subcall_address.clone(),
+                function: Symbol::new(&e, "subcall"),
+                args: (call_amount.clone(),).into_val(&e),
+                auths: vec![
+                    &e,
+                    Calldata {
+                        contract_id: token_address,
+                        function: Symbol::new(&e, "transfer"),
+                        args: (
+                            governor_address.clone(),
+                            inner_subcall_address.clone(),
+                            call_amount.clone(),
+                        )
+                            .into_val(&e),
+                        auths: vec![&e],
+                    },
+                ],
+            },
+        ],
+    });
 
-    let proposal_id =
-        governor_client.propose(&frodo, &calldata, &sub_calldata, &title, &description);
+    let proposal_id = governor_client.propose(&frodo, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
     governor_client.vote(&frodo, &proposal_id, &1);
     e.jump(settings.vote_period);
@@ -160,8 +160,9 @@ fn test_execute_call_subcall_auth() {
     governor_client.execute(&proposal_id);
     assert_eq!(token_client.balance(&inner_subcall_address), call_amount);
 }
+
 #[test]
-fn test_execute_call_subcall_no_auth() {
+fn test_execute_calldata_single_auth() {
     let e = Env::default();
     e.set_default_info();
     e.mock_all_auths();
@@ -187,31 +188,30 @@ fn test_execute_call_subcall_no_auth() {
     votes_client.deposit_for(&frodo, &frodo_votes);
 
     // create a proposal
-    let (_, _, title, description) = default_proposal_data(&e);
+    let (title, description, _) = default_proposal_data(&e);
     let call_amount: i128 = 100 * 10i128.pow(7);
     token_client.mint(&governor_address, &call_amount);
-    let calldata = Calldata {
+    let action = ProposalAction::Calldata(Calldata {
         contract_id: outter_subcall_address.clone(),
         function: Symbol::new(&e, "call_subcall"),
         args: (inner_subcall_address.clone(), call_amount.clone(), false).into_val(&e),
-    };
-    let sub_calldata: Vec<SubCalldata> = vec![
-        &e,
-        SubCalldata {
-            contract_id: token_address,
-            function: Symbol::new(&e, "transfer"),
-            args: (
-                governor_address.clone(),
-                inner_subcall_address.clone(),
-                call_amount.clone(),
-            )
-                .into_val(&e),
-            sub_auth: vec![&e],
-        },
-    ];
+        auths: vec![
+            &e,
+            Calldata {
+                contract_id: token_address,
+                function: Symbol::new(&e, "transfer"),
+                args: (
+                    governor_address.clone(),
+                    inner_subcall_address.clone(),
+                    call_amount.clone(),
+                )
+                    .into_val(&e),
+                auths: vec![&e],
+            },
+        ],
+    });
 
-    let proposal_id =
-        governor_client.propose(&frodo, &calldata, &sub_calldata, &title, &description);
+    let proposal_id = governor_client.propose(&frodo, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
     governor_client.vote(&frodo, &proposal_id, &1);
     e.jump(settings.vote_period);
@@ -267,8 +267,8 @@ fn test_execute_proposal_not_queued() {
     let governor_transfer_amount: i128 = 10_000_000;
     token_client.mint(&samwise, &governor_transfer_amount);
 
-    let (_, _, title, description) = default_proposal_data(&e);
-    let calldata = Calldata {
+    let (title, description, _) = default_proposal_data(&e);
+    let action = ProposalAction::Calldata(Calldata {
         contract_id: token_address,
         function: Symbol::new(&e, "transfer"),
         args: (
@@ -277,9 +277,11 @@ fn test_execute_proposal_not_queued() {
             governor_transfer_amount,
         )
             .into_val(&e),
-    };
+        auths: vec![&e],
+    });
 
-    let proposal_id = governor_client.propose(&samwise, &calldata, &vec![&e], &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
+
     e.jump(settings.vote_delay + 1);
     governor_client.vote(&samwise, &proposal_id, &1);
     governor_client.vote(&pippin, &proposal_id, &0);
@@ -320,8 +322,8 @@ fn test_execute_timelock_not_met() {
     let governor_transfer_amount: i128 = 10_000_000;
     token_client.mint(&samwise, &governor_transfer_amount);
 
-    let (_, _, title, description) = default_proposal_data(&e);
-    let calldata = Calldata {
+    let (title, description, _) = default_proposal_data(&e);
+    let action = ProposalAction::Calldata(Calldata {
         contract_id: token_address,
         function: Symbol::new(&e, "transfer"),
         args: (
@@ -330,9 +332,10 @@ fn test_execute_timelock_not_met() {
             governor_transfer_amount,
         )
             .into_val(&e),
-    };
+        auths: vec![&e],
+    });
 
-    let proposal_id = governor_client.propose(&samwise, &calldata, &vec![&e], &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
     governor_client.vote(&samwise, &proposal_id, &1);
     governor_client.vote(&pippin, &proposal_id, &0);

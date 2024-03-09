@@ -30,11 +30,10 @@ fn test_cancel() {
     token_client.mint(&samwise, &samwise_votes);
     votes_client.deposit_for(&samwise, &samwise_votes);
 
-    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+    let (title, description, action) = default_proposal_data(&e);
 
     // setup a proposal
-    let proposal_id =
-        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay / 2);
 
     governor_client.cancel(&samwise, &proposal_id);
@@ -110,11 +109,10 @@ fn test_cancel_proposal_active() {
     token_client.mint(&samwise, &samwise_mint_amount);
     votes_client.deposit_for(&samwise, &samwise_mint_amount);
 
-    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+    let (title, description, action) = default_proposal_data(&e);
 
     // setup a proposal, vote to make it active
-    let proposal_id =
-        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
 
     governor_client.vote(&samwise, &proposal_id, &1);

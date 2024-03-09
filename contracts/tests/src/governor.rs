@@ -1,8 +1,8 @@
 use soroban_governor::{
-    types::{Calldata, GovernorSettings, SubCalldata},
+    types::{Calldata, GovernorSettings, ProposalAction},
     GovernorContract, GovernorContractClient,
 };
-use soroban_sdk::{testutils::Address as _, vec, Address, Env, IntoVal, String, Symbol, Vec};
+use soroban_sdk::{testutils::Address as _, vec, Address, Env, IntoVal, String, Symbol};
 
 use crate::{common, votes, ONE_DAY_LEDGERS};
 
@@ -83,29 +83,31 @@ pub fn default_governor_settings() -> GovernorSettings {
         vote_delay: ONE_DAY_LEDGERS,
         vote_period: ONE_DAY_LEDGERS * 7,
         timelock: ONE_DAY_LEDGERS,
+        grace_period: ONE_DAY_LEDGERS * 7,
         quorum: 100,          // 1%
         counting_type: 2,     // 0x...010 (for)
         vote_threshold: 5100, // 51%
     }
 }
 
-/// Default test proposal data - cannot be submitted
-pub fn default_proposal_data(e: &Env) -> (Calldata, Vec<SubCalldata>, String, String) {
+/// Default test proposal information
+pub fn default_proposal_data(e: &Env) -> (String, String, ProposalAction) {
     let calldata = Calldata {
         contract_id: Address::generate(&e),
         function: Symbol::new(e, "test"),
         args: (1, 2, 3).into_val(e),
+        auths: vec![
+            e,
+            Calldata {
+                contract_id: Address::generate(e),
+                function: Symbol::new(e, "test"),
+                args: (1, 2, 3).into_val(e),
+                auths: vec![e],
+            },
+        ],
     };
-    let sub_calldata = vec![
-        e,
-        SubCalldata {
-            contract_id: Address::generate(e),
-            function: Symbol::new(e, "test"),
-            args: (1, 2, 3).into_val(e),
-            sub_auth: vec![e],
-        },
-    ];
     let title = String::from_str(e, "Test Title");
-    let description = String::from_str(e, "Test Description");
-    return (calldata, sub_calldata, title, description);
+    let description = String::from_str(e, "# This is a cool proposal");
+
+    (title, description, ProposalAction::Calldata(calldata))
 }

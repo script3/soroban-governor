@@ -1,6 +1,6 @@
-use soroban_sdk::{contractclient, Address, Env, String, Vec};
+use soroban_sdk::{contractclient, Address, Env, String};
 
-use crate::types::{Calldata, GovernorSettings, Proposal, SubCalldata, VoteCount};
+use crate::types::{GovernorSettings, Proposal, ProposalAction, VoteCount};
 
 #[contractclient(name = "GovernorClient")]
 pub trait Governor {
@@ -20,20 +20,18 @@ pub trait Governor {
     ///
     /// ### Arguments
     /// * `creator` - The address of the account creating the proposal
-    /// * `calldata` - The calldata to execute when the proposal is executed
-    /// * `sub_calldata` - The sub calldata to pre-authorize when the proposal is executed
     /// * `title` - The title of the proposal
     /// * `description` - The description of the proposal
+    /// * `action` - The action the proposal will take if passed
     ///
     /// ### Panics
     /// If the proposal is not created successfully
     fn propose(
         e: Env,
         creator: Address,
-        calldata: Calldata,
-        sub_calldata: Vec<SubCalldata>,
         title: String,
         description: String,
+        action: ProposalAction,
     ) -> u32;
 
     /// Get a proposal by its id

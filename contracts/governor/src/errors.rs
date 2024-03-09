@@ -20,9 +20,10 @@ pub enum GovernorError {
     ProposalNotActiveError = 202,
     InvalidProposalSupportError = 203,
     VotePeriodNotFinishedError = 204,
-    ProposalNotQueuedError = 205,
+    ProposalNotSuccessfulError = 205,
     TimelockNotMetError = 206,
     CancelActiveProposalError = 207,
     InsufficientVotingUnitsError = 208,
     AlreadyVotedError = 209,
+    InvalidProposalType = 210,
 }
