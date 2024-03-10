@@ -51,6 +51,10 @@ impl Governor for GovernorContract {
         creator.require_auth();
         storage::extend_instance(&e);
 
+        if storage::has_active_proposal(&e, &creator) {
+            panic_with_error!(&e, GovernorError::ProposalAlreadyActiveError);
+        }
+
         let settings = storage::get_settings(&e);
         let votes_client = VotesClient::new(&e, &storage::get_voter_token_address(&e));
         let creater_votes = votes_client.get_votes(&creator);
@@ -64,10 +68,10 @@ impl Governor for GovernorContract {
         let proposal_config = ProposalConfig {
             title: title.clone(),
             description: description.clone(),
-            proposer: creator.clone(),
             action: action.clone(),
         };
         let proposal_data = ProposalData {
+            creator: creator.clone(),
             vote_start,
             vote_end,
             status: ProposalStatus::Pending,
@@ -76,6 +80,7 @@ impl Governor for GovernorContract {
         storage::set_next_proposal_id(&e, &(proposal_id + 1));
         storage::set_proposal_config(&e, &proposal_id, &proposal_config);
         storage::set_proposal_data(&e, &proposal_id, &proposal_data);
+        storage::set_active_proposal(&e, &creator);
 
         votes_client.set_vote_sequence(&vote_start);
 
@@ -128,6 +133,7 @@ impl Governor for GovernorContract {
             storage::set_proposal_data(&e, &proposal_id, &proposal_data);
             GovernorEvents::proposal_defeated(&e, proposal_id);
         }
+        storage::del_active_proposal(&e, &proposal_data.creator);
     }
 
     fn execute(e: Env, proposal_id: u32) {

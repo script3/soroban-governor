@@ -26,4 +26,5 @@ pub enum GovernorError {
     InsufficientVotingUnitsError = 208,
     AlreadyVotedError = 209,
     InvalidProposalType = 210,
+    ProposalAlreadyActiveError = 211,
 }

@@ -52,7 +52,6 @@ pub struct Proposal {
 pub struct ProposalConfig {
     pub title: String,
     pub description: String,
-    pub proposer: Address,
     pub action: ProposalAction,
 }
 
@@ -82,6 +81,7 @@ pub enum ProposalAction {
 #[derive(Clone)]
 #[contracttype]
 pub struct ProposalData {
+    pub creator: Address,
     pub vote_start: u32,
     pub vote_end: u32,
     pub status: ProposalStatus,

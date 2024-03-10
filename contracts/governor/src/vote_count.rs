@@ -90,7 +90,6 @@ impl VoteCount {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -130,4 +129,3 @@ mod tests {
         assert!(vote_count.is_over_threshold(5000));
     }
 }
-

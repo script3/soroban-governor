@@ -71,6 +71,10 @@ fn test_close_proposal_queued() {
             )
         ]
     );
+
+    // verify creator can create another proposal
+    let proposal_id_new = governor_client.propose(&samwise, &title, &description, &action);
+    assert_eq!(proposal_id_new, proposal_id + 1);
 }
 
 #[test]
@@ -129,6 +133,10 @@ fn test_close_quorum_not_met() {
             )
         ]
     );
+
+    // verify creator can create another proposal
+    let proposal_id_new = governor_client.propose(&samwise, &title, &description, &action);
+    assert_eq!(proposal_id_new, proposal_id + 1);
 }
 
 #[test]
@@ -186,6 +194,10 @@ fn test_close_vote_threshold_not_met() {
             )
         ]
     );
+
+    // verify creator can create another proposal
+    let proposal_id_new = governor_client.propose(&samwise, &title, &description, &action);
+    assert_eq!(proposal_id_new, proposal_id + 1);
 }
 
 #[test]
@@ -235,6 +247,10 @@ fn test_close_tracks_quorum_with_counting_type() {
     // verify chain results
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
     assert_eq!(proposal.data.status, ProposalStatus::Successful);
+
+    // verify creator can create another proposal
+    let proposal_id_new = governor_client.propose(&samwise, &title, &description, &action);
+    assert_eq!(proposal_id_new, proposal_id + 1);
 }
 
 #[test]
