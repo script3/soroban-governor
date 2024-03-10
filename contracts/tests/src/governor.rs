@@ -77,8 +77,9 @@ pub fn create_soroban_governor_wasm<'a>(
 }
 
 /// Default governor settings
-pub fn default_governor_settings() -> GovernorSettings {
+pub fn default_governor_settings(e: &Env) -> GovernorSettings {
     GovernorSettings {
+        council: Address::generate(e),
         proposal_threshold: 1_0000000,
         vote_delay: ONE_DAY_LEDGERS,
         vote_period: ONE_DAY_LEDGERS * 7,

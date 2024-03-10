@@ -23,7 +23,7 @@ fn test_execute_calldata_no_auths() {
     let samwise = Address::generate(&e);
     let pippin = Address::generate(&e);
 
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -116,7 +116,7 @@ fn test_execute_calldata_auth_chain() {
     let bombadil = Address::generate(&e);
     let frodo = Address::generate(&e);
 
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -199,7 +199,7 @@ fn test_execute_calldata_single_auth() {
     let bombadil = Address::generate(&e);
     let frodo = Address::generate(&e);
 
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -274,7 +274,7 @@ fn test_execute_settings() {
     let bombadil = Address::generate(&e);
     let frodo = Address::generate(&e);
 
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -290,6 +290,7 @@ fn test_execute_settings() {
 
     // create a proposal
     let new_settings = GovernorSettings {
+        council: Address::generate(&e),
         proposal_threshold: 829421,
         vote_delay: 1231,
         vote_period: 7456,
@@ -345,7 +346,7 @@ fn test_execute_upgrade() {
     let bombadil = Address::generate(&e);
     let frodo = Address::generate(&e);
 
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -402,7 +403,7 @@ fn test_execute_nonexistent_proposal() {
     e.mock_all_auths();
 
     let bombadil = Address::generate(&e);
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, _, _) = create_governor(&e, &bombadil, &settings);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
@@ -420,7 +421,7 @@ fn test_execute_proposal_not_queued() {
     let frodo = Address::generate(&e);
     let samwise = Address::generate(&e);
     let pippin = Address::generate(&e);
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -475,7 +476,7 @@ fn test_execute_timelock_not_met() {
     let frodo = Address::generate(&e);
     let samwise = Address::generate(&e);
     let pippin = Address::generate(&e);
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);

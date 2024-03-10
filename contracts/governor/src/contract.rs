@@ -163,11 +163,19 @@ impl Governor for GovernorContract {
         storage::set_proposal_data(&e, &proposal_id, &proposal_data);
     }
 
-    fn cancel(e: Env, creator: Address, proposal_id: u32) {
-        creator.require_auth();
+    fn cancel(e: Env, from: Address, proposal_id: u32) {
         storage::extend_instance(&e);
+        from.require_auth();
+
         let mut proposal_data = storage::get_proposal_data(&e, &proposal_id)
             .unwrap_or_else(|| panic_with_error!(&e, GovernorError::NonExistentProposalError));
+        if from != proposal_data.creator {
+            let settings = storage::get_settings(&e);
+            if from != settings.council {
+                panic_with_error!(&e, GovernorError::UnauthorizedError);
+            }
+        }
+
         if proposal_data.status != ProposalStatus::Pending {
             panic_with_error!(&e, GovernorError::CancelActiveProposalError);
         }

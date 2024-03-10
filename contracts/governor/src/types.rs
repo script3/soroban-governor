@@ -4,6 +4,9 @@ use soroban_sdk::{contracttype, Address, BytesN, String, Symbol, Val, Vec};
 #[derive(Clone)]
 #[contracttype]
 pub struct GovernorSettings {
+    /// The address of the security council that can cancel proposals during the vote delay period. If the DAO does not
+    /// have a council, this should be set to the zero address.
+    pub council: Address,
     /// The votes required to create a proposal.
     pub proposal_threshold: i128,
     /// The delay (in ledgers) from the proposal creation to when the voting period begins. The voting

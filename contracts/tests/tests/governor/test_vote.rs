@@ -22,7 +22,7 @@ fn test_vote() {
     let frodo = Address::generate(&e);
     let samwise = Address::generate(&e);
 
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -104,7 +104,7 @@ fn test_vote_user_changes_support() {
     let bombadil = Address::generate(&e);
     let frodo = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -153,7 +153,7 @@ fn test_vote_multiple_users() {
     let merry = Address::generate(&e);
     let bilbo = Address::generate(&e);
 
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -213,7 +213,7 @@ fn test_vote_nonexistent_proposal() {
     let bombadil = Address::generate(&e);
     let frodo = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -241,7 +241,7 @@ fn test_vote_delay_not_ended() {
     let bombadil = Address::generate(&e);
     let frodo = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -275,7 +275,7 @@ fn test_vote_invalid_support_option() {
     let frodo = Address::generate(&e);
     let samwise = Address::generate(&e);
 
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);

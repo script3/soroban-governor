@@ -67,14 +67,14 @@ pub trait Governor {
     /// Cancel a proposal. Canceling a proposal requires the proposal to not have opened for voting yet.
     ///
     /// ### Arguments
-    /// * `creator` - The address of the account that created the proposal
+    /// * `from` - The address of the account canceling the proposal
     /// * `proposal_id` - The id of the proposal to cancel
     ///
     /// ### Panics
-    /// * If the proposal_id is invalid
-    /// * If the proposal is has already started voting
-    /// * If the proposal is not created by the creator
-    fn cancel(e: Env, creator: Address, proposal_id: u32);
+    /// * If the `proposal_id` is invalid
+    /// * If the proposal has already started voting
+    /// * If from did not authorize the cancel or does not have the ability to cancel the proposal
+    fn cancel(e: Env, from: Address, proposal_id: u32);
 
     /// Vote on a proposal with the voter's voting power at the time of the proposals voting checkpoint.
     ///
