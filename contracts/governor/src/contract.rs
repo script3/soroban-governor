@@ -63,7 +63,12 @@ impl Governor for GovernorContract {
         }
 
         let proposal_id = storage::get_next_proposal_id(&e);
-        let vote_start = e.ledger().sequence() + settings.vote_delay;
+        let vote_start = match action {
+            // no vote delay for snapshot proposals as they cannot be executed
+            ProposalAction::Snapshot => e.ledger().sequence(),
+            // all other proposals have a vote delay
+            _ => e.ledger().sequence() + settings.vote_delay,
+        };
         let vote_end = vote_start + settings.vote_period;
         let proposal_config = ProposalConfig {
             title: title.clone(),

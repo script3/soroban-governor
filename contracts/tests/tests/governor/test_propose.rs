@@ -147,14 +147,7 @@ fn test_propose_with_active_proposal() {
     let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
     assert_eq!(proposal.id, 0);
-    assert_eq!(proposal.config.title, title);
-    assert_eq!(proposal.config.description, description);
     assert_eq!(proposal.data.creator, samwise);
-    assert_eq!(proposal.data.vote_start, settings.vote_delay);
-    assert_eq!(
-        proposal.data.vote_end,
-        settings.vote_delay + settings.vote_period
-    );
     assert_eq!(proposal.data.status, ProposalStatus::Pending);
 
     e.jump(settings.vote_delay + 1);
@@ -164,6 +157,41 @@ fn test_propose_with_active_proposal() {
     let action2 = ProposalAction::Upgrade(bytesn);
     let result = governor_client.try_propose(&samwise, &title, &description, &action2);
     assert_eq!(result.err(), Some(Ok(Error::from_contract_error(211))));
+}
+
+#[test]
+fn test_propose_snapshot() {
+    let e = Env::default();
+    e.mock_all_auths();
+
+    let bombadil = Address::generate(&e);
+    let samwise = Address::generate(&e);
+    let settings = default_governor_settings(&e);
+    let (governor_address, token_address, votes_address) =
+        create_governor(&e, &bombadil, &settings);
+    let token_client = MockTokenClient::new(&e, &token_address);
+    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let governor_client = GovernorContractClient::new(&e, &governor_address);
+
+    let samwise_mint_amount: i128 = 10_000_000;
+    token_client.mint(&samwise, &samwise_mint_amount);
+    votes_client.deposit_for(&samwise, &samwise_mint_amount);
+
+    let (title, description, _) = default_proposal_data(&e);
+    let action = ProposalAction::Snapshot;
+
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
+    let proposal = governor_client.get_proposal(&proposal_id).unwrap();
+    assert_eq!(proposal.id, 0);
+    assert_eq!(proposal.config.title, title);
+    assert_eq!(proposal.config.description, description);
+    assert_eq!(proposal.data.creator, samwise);
+    assert_eq!(proposal.data.vote_start, e.ledger().sequence());
+    assert_eq!(
+        proposal.data.vote_end,
+        e.ledger().sequence() + settings.vote_period
+    );
+    assert_eq!(proposal.data.status, ProposalStatus::Pending);
 }
 
 #[test]
