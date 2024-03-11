@@ -116,14 +116,14 @@ pub enum ProposalStatus {
     Pending = 0,
     /// The proposal is active and can be voted on
     Active = 1,
-    /// The proposal was voted against
-    Defeated = 2,
     /// The proposal was voted for. If the proposal is executable, the timelock begins once this state is reached.
-    Successful = 3,
+    Successful = 2,
+    /// The proposal was voted against
+    Defeated = 3,
     /// The proposal did not reach quorum before the voting period ended
     Expired = 4,
     /// The proposal has been executed
-    Executed = 6,
+    Executed = 5,
     /// The proposal has been canceled
-    Canceled = 7,
+    Canceled = 6,
 }

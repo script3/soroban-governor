@@ -24,39 +24,12 @@ impl GovernorEvents {
         e.events().publish(topics, (title, desc, action));
     }
 
-    /// Emitted when a proposal is defeated
+    /// Emitted when a proposal has changed status
     ///
-    /// - topics - `["proposal_closed", proposal_id: u32]`
-    /// - data - `[new_status: ProposalStatus]`
-    pub fn proposal_defeated(e: &Env, proposal_id: u32) {
-        let topics = (Symbol::new(&e, "proposal_defeated"), proposal_id);
-        e.events().publish(topics, ());
-    }
-
-    /// Emitted when a proposal is queued for submission
-    ///
-    /// - topics - `["proposal_queued", proposal_id: u32]`
-    /// - data - `[unlock_ledger: u32]`
-    pub fn proposal_queued(e: &Env, proposal_id: u32, unlock_ledger: u32) {
-        let topics = (Symbol::new(&e, "proposal_queued"), proposal_id);
-        e.events().publish(topics, unlock_ledger);
-    }
-
-    /// Emitted when a proposal is canceled
-    ///
-    /// - topics - `["proposal_canceled", proposal_id: u32]`
+    /// - topics - `["proposal_closed", proposal_id: u32, status: u32]`
     /// - data - `[]`
-    pub fn proposal_canceled(e: &Env, proposal_id: u32) {
-        let topics = (Symbol::new(&e, "proposal_canceled"), proposal_id);
-        e.events().publish(topics, ());
-    }
-
-    /// Emitted when a proposal is executed
-    ///
-    /// - topics - `["proposal_executed", proposal_id: u32]`
-    /// - data - `[]`
-    pub fn proposal_executed(e: &Env, proposal_id: u32) {
-        let topics = (Symbol::new(&e, "proposal_executed"), proposal_id);
+    pub fn proposal_updated(e: &Env, proposal_id: u32, status: u32) {
+        let topics = (Symbol::new(&e, "proposal_updated"), proposal_id, status);
         e.events().publish(topics, ());
     }
 

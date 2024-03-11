@@ -66,8 +66,13 @@ fn test_close_proposal_queued() {
             &e,
             (
                 governor_address.clone(),
-                (Symbol::new(&e, "proposal_queued"), proposal_id).into_val(&e),
-                (e.ledger().sequence() + settings.timelock).into_val(&e)
+                (
+                    Symbol::new(&e, "proposal_updated"),
+                    proposal_id,
+                    ProposalStatus::Successful as u32
+                )
+                    .into_val(&e),
+                ().into_val(&e)
             )
         ]
     );
@@ -128,7 +133,12 @@ fn test_close_quorum_not_met() {
             &e,
             (
                 governor_address.clone(),
-                (Symbol::new(&e, "proposal_defeated"), proposal_id).into_val(&e),
+                (
+                    Symbol::new(&e, "proposal_updated"),
+                    proposal_id,
+                    ProposalStatus::Defeated as u32
+                )
+                    .into_val(&e),
                 ().into_val(&e)
             )
         ]
@@ -189,7 +199,12 @@ fn test_close_vote_threshold_not_met() {
             &e,
             (
                 governor_address.clone(),
-                (Symbol::new(&e, "proposal_defeated"), proposal_id).into_val(&e),
+                (
+                    Symbol::new(&e, "proposal_updated"),
+                    proposal_id,
+                    ProposalStatus::Defeated as u32
+                )
+                    .into_val(&e),
                 ().into_val(&e)
             )
         ]

@@ -100,7 +100,12 @@ fn test_execute_calldata_no_auths() {
             &e,
             (
                 governor_address.clone(),
-                (Symbol::new(&e, "proposal_executed"), proposal_id).into_val(&e),
+                (
+                    Symbol::new(&e, "proposal_updated"),
+                    proposal_id,
+                    ProposalStatus::Executed as u32
+                )
+                    .into_val(&e),
                 ().into_val(&e)
             )
         ]

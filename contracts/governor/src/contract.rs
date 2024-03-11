@@ -122,18 +122,12 @@ impl Governor for GovernorContract {
 
         if passed_vote_threshold && passed_quorum {
             proposal_data.status = ProposalStatus::Successful;
-            storage::set_proposal_data(&e, &proposal_id, &proposal_data);
-            GovernorEvents::proposal_queued(
-                &e,
-                proposal_id,
-                proposal_data.vote_end + settings.timelock,
-            );
         } else {
             proposal_data.status = ProposalStatus::Defeated;
-            storage::set_proposal_data(&e, &proposal_id, &proposal_data);
-            GovernorEvents::proposal_defeated(&e, proposal_id);
         }
+        storage::set_proposal_data(&e, &proposal_id, &proposal_data);
         storage::del_active_proposal(&e, &proposal_data.creator);
+        GovernorEvents::proposal_updated(&e, proposal_id, proposal_data.status as u32);
     }
 
     fn execute(e: Env, proposal_id: u32) {
@@ -158,8 +152,8 @@ impl Governor for GovernorContract {
             let proposal_config = storage::get_proposal_config(&e, &proposal_id).unwrap_optimized();
             proposal_config.execute(&e);
             proposal_data.status = ProposalStatus::Executed;
-            GovernorEvents::proposal_executed(&e, proposal_id);
         }
+        GovernorEvents::proposal_updated(&e, proposal_id, proposal_data.status as u32);
         storage::set_proposal_data(&e, &proposal_id, &proposal_data);
     }
 
@@ -181,7 +175,7 @@ impl Governor for GovernorContract {
         }
         proposal_data.status = ProposalStatus::Canceled;
         storage::set_proposal_data(&e, &proposal_id, &proposal_data);
-        GovernorEvents::proposal_canceled(&e, proposal_id);
+        GovernorEvents::proposal_updated(&e, proposal_id, proposal_data.status as u32);
     }
 
     fn vote(e: Env, voter: Address, proposal_id: u32, support: u32) {
