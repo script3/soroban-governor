@@ -1,8 +1,8 @@
 #[cfg(test)]
 use sep_41_token::testutils::MockTokenClient;
-use soroban_governor::types::{Calldata, SubCalldata};
+use soroban_governor::types::{Calldata, ProposalAction};
 use soroban_governor::GovernorContractClient;
-use soroban_sdk::{testutils::Address as _, vec, Address, Env, Error, IntoVal, Symbol, Vec};
+use soroban_sdk::{testutils::Address as _, vec, Address, Env, Error, IntoVal, Symbol};
 use soroban_votes::TokenVotesClient;
 use tests::governor::create_governor;
 use tests::{
@@ -11,10 +11,9 @@ use tests::{
     mocks::create_mock_subcall_contract_wasm,
 };
 
-
 /// @dev
 /// This test explicitly checks that votes are not double counted. However, this also
-/// prevents any potential flash loan attack, where a user could borrow tokens, vote, 
+/// prevents any potential flash loan attack, where a user could borrow tokens, vote,
 /// and return them interest free.
 #[test]
 fn test_double_count() {
@@ -28,7 +27,7 @@ fn test_double_count() {
     let samwise = Address::generate(&e);
     let pippin = Address::generate(&e);
 
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -61,29 +60,28 @@ fn test_double_count() {
     assert_eq!(votes_client.total_supply(), total_votes);
 
     // create a proposal
-    let (_, _, title, description) = default_proposal_data(&e);
+    let (title, description, _) = default_proposal_data(&e);
     let call_amount: i128 = 100 * 10i128.pow(7);
-    let calldata = Calldata {
+    let action = ProposalAction::Calldata(Calldata {
         contract_id: subcall_address.clone(),
         function: Symbol::new(&e, "subcall"),
         args: (call_amount.clone(),).into_val(&e),
-    };
-    let sub_calldata: Vec<SubCalldata> = vec![
-        &e,
-        SubCalldata {
-            contract_id: token_address,
-            function: Symbol::new(&e, "transfer"),
-            args: (
-                governor_address.clone(),
-                subcall_address.clone(),
-                call_amount.clone(),
-            )
-                .into_val(&e),
-            sub_auth: vec![&e],
-        },
-    ];
-    let proposal_id =
-        governor_client.propose(&frodo, &calldata, &sub_calldata, &title, &description);
+        auths: vec![
+            &e,
+            Calldata {
+                contract_id: token_address,
+                function: Symbol::new(&e, "transfer"),
+                args: (
+                    governor_address.clone(),
+                    subcall_address.clone(),
+                    call_amount.clone(),
+                )
+                    .into_val(&e),
+                auths: vec![&e],
+            },
+        ],
+    });
+    let proposal_id = governor_client.propose(&frodo, &title, &description, &action);
 
     // pass time to one ledger before vote start
     e.jump(settings.vote_delay - 1);
@@ -98,7 +96,7 @@ fn test_double_count() {
     // frodo will attempt to perform a double vote with samwise
     // frodo mints more tokens, votes, sends them to samwise, and then
     // samwise votes with them, to pass the proposal
-    
+
     // frodo mints more tokens
     let double_vote_amount = 9 * 10i128.pow(7);
     token_client.mint(&frodo, &double_vote_amount);
@@ -120,13 +118,16 @@ fn test_double_count() {
     // everyone can vote and things that occured on the block of the vote start are tracked
 
     votes_client.transfer(&frodo, &pippin, &1);
-    governor_client.vote(&frodo, &proposal_id, &2);
-    governor_client.vote(&samwise, &proposal_id, &2);
-    governor_client.vote(&pippin, &proposal_id, &1);
+    governor_client.vote(&frodo, &proposal_id, &1);
+    governor_client.vote(&samwise, &proposal_id, &1);
+    governor_client.vote(&pippin, &proposal_id, &0);
 
     // verify proposal votes
     let proposal_votes = governor_client.get_proposal_votes(&proposal_id);
-    assert_eq!(proposal_votes.votes_for, frodo_votes + samwise_votes + double_vote_amount);
-    assert_eq!(proposal_votes.votes_against, pippin_votes * 2);
-    assert_eq!(proposal_votes.votes_abstained, 0);
+    assert_eq!(proposal_votes.against, pippin_votes * 2);
+    assert_eq!(
+        proposal_votes._for,
+        frodo_votes + samwise_votes + double_vote_amount
+    );
+    assert_eq!(proposal_votes.abstain, 0);
 }

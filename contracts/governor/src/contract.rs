@@ -1,19 +1,17 @@
 use soroban_sdk::{
-    contract, contractimpl, panic_with_error, unwrap::UnwrapOptimized, Address, Env, String, Val,
-    Vec,
+    contract, contractimpl, panic_with_error, unwrap::UnwrapOptimized, Address, Env, String,
 };
 
 use crate::{
-    constants::{BPS_SCALAR, MAX_PROPOSAL_LIFETIME, MAX_VOTE_PERIOD},
+    constants::{MAX_PROPOSAL_LIFETIME, MAX_VOTE_PERIOD},
     dependencies::VotesClient,
     errors::GovernorError,
     events::GovernorEvents,
     governor::Governor,
     storage,
-    sub_auth::create_sub_auth,
     types::{
-        Calldata, GovernorSettings, Proposal, ProposalConfig, ProposalData, ProposalStatus,
-        SubCalldata, VoteCount,
+        GovernorSettings, Proposal, ProposalAction, ProposalConfig, ProposalData, ProposalStatus,
+        VoteCount,
     },
 };
 
@@ -46,13 +44,16 @@ impl Governor for GovernorContract {
     fn propose(
         e: Env,
         creator: Address,
-        calldata: Calldata,
-        sub_calldata: Vec<SubCalldata>,
         title: String,
         description: String,
+        action: ProposalAction,
     ) -> u32 {
         creator.require_auth();
         storage::extend_instance(&e);
+
+        if storage::has_active_proposal(&e, &creator) {
+            panic_with_error!(&e, GovernorError::ProposalAlreadyActiveError);
+        }
 
         let settings = storage::get_settings(&e);
         let votes_client = VotesClient::new(&e, &storage::get_voter_token_address(&e));
@@ -62,27 +63,33 @@ impl Governor for GovernorContract {
         }
 
         let proposal_id = storage::get_next_proposal_id(&e);
-        let vote_start = e.ledger().sequence() + settings.vote_delay;
+        let vote_start = match action {
+            // no vote delay for snapshot proposals as they cannot be executed
+            ProposalAction::Snapshot => e.ledger().sequence(),
+            // all other proposals have a vote delay
+            _ => e.ledger().sequence() + settings.vote_delay,
+        };
         let vote_end = vote_start + settings.vote_period;
         let proposal_config = ProposalConfig {
             title: title.clone(),
-            calldata: calldata.clone(),
-            sub_calldata,
-            description,
-            proposer: creator.clone(),
+            description: description.clone(),
+            action: action.clone(),
         };
         let proposal_data = ProposalData {
+            creator: creator.clone(),
             vote_start,
             vote_end,
             status: ProposalStatus::Pending,
+            executable: proposal_config.is_executable(),
         };
         storage::set_next_proposal_id(&e, &(proposal_id + 1));
         storage::set_proposal_config(&e, &proposal_id, &proposal_config);
         storage::set_proposal_data(&e, &proposal_id, &proposal_data);
+        storage::set_active_proposal(&e, &creator);
 
         votes_client.set_vote_sequence(&vote_start);
 
-        GovernorEvents::proposal_created(&e, proposal_id, creator, title, calldata);
+        GovernorEvents::proposal_created(&e, proposal_id, creator, title, description, action);
         proposal_id
     }
 
@@ -113,37 +120,19 @@ impl Governor for GovernorContract {
         let votes_client = VotesClient::new(&e, &storage::get_voter_token_address(&e));
         let total_vote_supply = votes_client.get_past_total_supply(&proposal_data.vote_start);
 
-        let mut quorum_votes: i128 = 0;
         let vote_count = storage::get_proposal_vote_count(&e, &proposal_id);
-        if settings.counting_type & 0b001 != 0 {
-            quorum_votes += vote_count.votes_abstained;
-        }
-        if settings.counting_type & 0b010 != 0 {
-            quorum_votes += vote_count.votes_against;
-        }
-        if settings.counting_type & 0b100 != 0 {
-            quorum_votes += vote_count.votes_for;
-        }
+        let passed_quorum =
+            vote_count.is_over_quorum(settings.quorum, settings.counting_type, total_vote_supply);
+        let passed_vote_threshold = vote_count.is_over_threshold(settings.vote_threshold);
 
-        let votes_for_bps =
-            (vote_count.votes_for * BPS_SCALAR) / (vote_count.votes_against + vote_count.votes_for);
-        let quorum_bps = (quorum_votes * BPS_SCALAR) / total_vote_supply;
-
-        if quorum_bps >= (settings.quorum as i128)
-            && votes_for_bps >= (settings.vote_threshold as i128)
-        {
-            proposal_data.status = ProposalStatus::Queued;
-            storage::set_proposal_data(&e, &proposal_id, &proposal_data);
-            GovernorEvents::proposal_queued(
-                &e,
-                proposal_id,
-                proposal_data.vote_end + settings.timelock,
-            );
+        if passed_vote_threshold && passed_quorum {
+            proposal_data.status = ProposalStatus::Successful;
         } else {
             proposal_data.status = ProposalStatus::Defeated;
-            storage::set_proposal_data(&e, &proposal_id, &proposal_data);
-            GovernorEvents::proposal_defeated(&e, proposal_id);
         }
+        storage::set_proposal_data(&e, &proposal_id, &proposal_data);
+        storage::del_active_proposal(&e, &proposal_data.creator);
+        GovernorEvents::proposal_updated(&e, proposal_id, proposal_data.status as u32);
     }
 
     fn execute(e: Env, proposal_id: u32) {
@@ -151,8 +140,8 @@ impl Governor for GovernorContract {
         let mut proposal_data = storage::get_proposal_data(&e, &proposal_id)
             .unwrap_or_else(|| panic_with_error!(&e, GovernorError::NonExistentProposalError));
 
-        if proposal_data.status != ProposalStatus::Queued {
-            panic_with_error!(&e, GovernorError::ProposalNotQueuedError);
+        if proposal_data.status != ProposalStatus::Successful {
+            panic_with_error!(&e, GovernorError::ProposalNotSuccessfulError);
         }
 
         let settings = storage::get_settings(&e);
@@ -160,30 +149,38 @@ impl Governor for GovernorContract {
             panic_with_error!(&e, GovernorError::TimelockNotMetError);
         }
 
-        let proposal_config = storage::get_proposal_config(&e, &proposal_id).unwrap_optimized();
-        let pre_auth_vec = create_sub_auth(&e, &proposal_config.sub_calldata);
-        e.authorize_as_current_contract(pre_auth_vec);
-        e.invoke_contract::<Val>(
-            &proposal_config.calldata.contract_id,
-            &proposal_config.calldata.function,
-            proposal_config.calldata.args,
-        );
-        proposal_data.status = ProposalStatus::Executed;
+        if e.ledger().sequence()
+            > proposal_data.vote_end + settings.timelock + settings.grace_period
+        {
+            proposal_data.status = ProposalStatus::Expired;
+        } else {
+            let proposal_config = storage::get_proposal_config(&e, &proposal_id).unwrap_optimized();
+            proposal_config.execute(&e);
+            proposal_data.status = ProposalStatus::Executed;
+        }
+        GovernorEvents::proposal_updated(&e, proposal_id, proposal_data.status as u32);
         storage::set_proposal_data(&e, &proposal_id, &proposal_data);
-        GovernorEvents::proposal_executed(&e, proposal_id);
     }
 
-    fn cancel(e: Env, creator: Address, proposal_id: u32) {
-        creator.require_auth();
+    fn cancel(e: Env, from: Address, proposal_id: u32) {
         storage::extend_instance(&e);
+        from.require_auth();
+
         let mut proposal_data = storage::get_proposal_data(&e, &proposal_id)
             .unwrap_or_else(|| panic_with_error!(&e, GovernorError::NonExistentProposalError));
+        if from != proposal_data.creator {
+            let settings = storage::get_settings(&e);
+            if from != settings.council {
+                panic_with_error!(&e, GovernorError::UnauthorizedError);
+            }
+        }
+
         if proposal_data.status != ProposalStatus::Pending {
             panic_with_error!(&e, GovernorError::CancelActiveProposalError);
         }
         proposal_data.status = ProposalStatus::Canceled;
         storage::set_proposal_data(&e, &proposal_id, &proposal_data);
-        GovernorEvents::proposal_canceled(&e, proposal_id);
+        GovernorEvents::proposal_updated(&e, proposal_id, proposal_data.status as u32);
     }
 
     fn vote(e: Env, voter: Address, proposal_id: u32, support: u32) {
@@ -202,30 +199,22 @@ impl Governor for GovernorContract {
             }
         }
 
+        if storage::get_voter_status(&e, &voter, &proposal_id).is_some() {
+            panic_with_error!(&e, GovernorError::AlreadyVotedError);
+        }
+
         let voter_power = VotesClient::new(&e, &storage::get_voter_token_address(&e))
             .get_past_votes(&voter, &proposal_data.vote_start);
+        if voter_power <= 0 {
+            panic_with_error!(&e, GovernorError::InsufficientVotingUnitsError);
+        }
+
         let mut vote_count = storage::get_proposal_vote_count(&e, &proposal_id);
-        let voter_status = storage::get_voter_status(&e, &voter, &proposal_id);
-
-        // Check if voter has already voted and remove previous vote from count
-        if let Some(voter_status) = voter_status {
-            match voter_status {
-                0 => vote_count.votes_abstained -= voter_power,
-                1 => vote_count.votes_against -= voter_power,
-                2 => vote_count.votes_for -= voter_power,
-                _ => (),
-            }
-        }
-
-        match support {
-            0 => vote_count.votes_abstained += voter_power,
-            1 => vote_count.votes_against += voter_power,
-            2 => vote_count.votes_for += voter_power,
-            _ => panic_with_error!(&e, GovernorError::InvalidProposalSupportError),
-        }
+        vote_count.add_vote(&e, support, voter_power);
 
         storage::set_voter_status(&e, &voter, &proposal_id, &support);
         storage::set_proposal_vote_count(&e, &proposal_id, &vote_count);
+
         GovernorEvents::vote_cast(&e, proposal_id, voter, support, voter_power);
     }
 

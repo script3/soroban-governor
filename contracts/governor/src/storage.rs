@@ -36,6 +36,8 @@ pub enum GovernorDataKey {
     VoterStatus(VoterStatusKey),
     // The proposal results
     ProposalVotes(u32),
+    // A flag for an active proposal by a creator
+    Active(Address),
 }
 
 //********** Storage Utils **********//
@@ -196,6 +198,27 @@ pub fn set_proposal_data(e: &Env, id: &u32, proposal_status: &ProposalData) {
         .extend_ttl(&key, LEDGER_BUMP_PROPOSAL, LEDGER_BUMP_PROPOSAL);
 }
 
+/// Check if an active proposal exists created by `address`
+pub fn has_active_proposal(e: &Env, address: &Address) -> bool {
+    let key = GovernorDataKey::Active(address.clone());
+    e.storage().temporary().has(&key)
+}
+
+/// Set the active proposal flag for `address`
+pub fn set_active_proposal(e: &Env, address: &Address) {
+    let key = GovernorDataKey::Active(address.clone());
+    e.storage().temporary().set(&key, &true);
+    e.storage()
+        .temporary()
+        .extend_ttl(&key, LEDGER_BUMP_PROPOSAL, LEDGER_BUMP_PROPOSAL);
+}
+
+/// Remove the active proposal flag for `address`
+pub fn del_active_proposal(e: &Env, address: &Address) {
+    let key = GovernorDataKey::Active(address.clone());
+    e.storage().temporary().remove(&key);
+}
+
 /********** Vote **********/
 
 /// Set the voter status of `voter` for proposal at `proposal_id` to `status`
@@ -261,10 +284,6 @@ pub fn get_proposal_vote_count(e: &Env, proposal_id: &u32) -> VoteCount {
     {
         result
     } else {
-        VoteCount {
-            votes_for: 0,
-            votes_against: 0,
-            votes_abstained: 0,
-        }
+        VoteCount::new()
     }
 }

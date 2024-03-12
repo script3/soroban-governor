@@ -49,7 +49,7 @@ impl Checkpoint for u128 {
 
 /// Get the amount of the checkpoint that has a sequence number greater than or equal
 /// to the given sequence.
-/// 
+///
 /// Returns 0 if no checkpoint exists that meets the criteria.
 ///
 /// ### Arguments
@@ -62,10 +62,12 @@ pub fn upper_lookup(e: &Env, checkpoints: &Vec<u128>, sequence: u32) -> i128 {
 
     // search with max checkpoint value for the sequence to ensure that we catch any checkpoint
     // with a matching sequence as less than or equal to
-    match checkpoints.binary_search(u128::from_checkpoint_data(&e, sequence, 0xFFFFFFFF_FFFFFFFF_FFFFFFFF)) {
-        Ok(index) =>  {
-            checkpoints.get_unchecked(index).to_checkpoint_data().1
-        },
+    match checkpoints.binary_search(u128::from_checkpoint_data(
+        &e,
+        sequence,
+        0xFFFFFFFF_FFFFFFFF_FFFFFFFF,
+    )) {
+        Ok(index) => checkpoints.get_unchecked(index).to_checkpoint_data().1,
         Err(index) => {
             if index == 0 {
                 0

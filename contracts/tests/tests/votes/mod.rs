@@ -1,3 +1,4 @@
+mod test_admin;
 mod test_delegation;
 mod test_deposit_for;
 mod test_get_past;

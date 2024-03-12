@@ -1,4 +1,4 @@
-use sep_41_token::{Token, TokenClient, TokenEvents};
+use sep_41_token::{Token, TokenEvents};
 use soroban_sdk::{
     contract, contractimpl, panic_with_error, unwrap::UnwrapOptimized, Address, Env, String,
 };
@@ -17,6 +17,17 @@ use crate::{
         burn_voting_units, mint_voting_units, move_voting_units, transfer_voting_units,
     },
 };
+
+#[cfg(feature = "admin")]
+use crate::votes::Admin;
+
+#[cfg(feature = "wrapped")]
+use crate::votes::WrappedToken;
+#[cfg(feature = "wrapped")]
+use soroban_sdk::token::TokenClient;
+
+#[cfg(all(feature = "admin", not(feature = "wrapped")))]
+use crate::votes::SorobanOnly;
 
 #[contract]
 pub struct TokenVotes;
@@ -79,8 +90,8 @@ impl Token for TokenVotes {
         burn_voting_units(&e, &from, amount);
 
         // burn underlying from the tokens held by this contract
-        let token = TokenClient::new(&e, &storage::get_token(&e));
-        token.burn(&e.current_contract_address(), &amount);
+        #[cfg(feature = "wrapped")]
+        TokenClient::new(&e, &storage::get_token(&e)).burn(&e.current_contract_address(), &amount);
 
         TokenEvents::burn(&e, from, amount);
     }
@@ -95,8 +106,8 @@ impl Token for TokenVotes {
         burn_voting_units(&e, &from, amount);
 
         // burn underlying from the tokens held by this contract
-        let token = TokenClient::new(&e, &storage::get_token(&e));
-        token.burn(&e.current_contract_address(), &amount);
+        #[cfg(feature = "wrapped")]
+        TokenClient::new(&e, &storage::get_token(&e)).burn(&e.current_contract_address(), &amount);
 
         TokenEvents::burn(&e, from, amount);
     }
@@ -117,28 +128,6 @@ impl Token for TokenVotes {
 #[contractimpl]
 /// Implementation of the Votes trait to allow for tracking votes
 impl Votes for TokenVotes {
-    fn initialize(e: Env, token: Address, governor: Address) {
-        if storage::get_is_init(&e) {
-            panic_with_error!(e, TokenVotesError::AlreadyInitializedError);
-        }
-        storage::extend_instance(&e);
-
-        let underlying_token = TokenClient::new(&e, &token);
-        let decimal = underlying_token.decimals();
-        let symbol = underlying_token.symbol();
-        let name = underlying_token.name();
-        // TODO: Come up with custom symbol and name for the token
-        let token_metadata = TokenMetadata {
-            decimal,
-            name,
-            symbol,
-        };
-        storage::set_metadata(&e, &token_metadata);
-        storage::set_token(&e, &token);
-        storage::set_governor(&e, &governor);
-        storage::set_is_init(&e);
-    }
-
     fn total_supply(e: Env) -> i128 {
         storage::extend_instance(&e);
         storage::get_total_supply(&e).to_checkpoint_data().1
@@ -234,6 +223,62 @@ impl Votes for TokenVotes {
 
         VoterTokenEvents::delegate(&e, account, delegatee, cur_delegate)
     }
+}
+
+#[cfg(feature = "admin")]
+#[contractimpl]
+impl Admin for TokenVotes {
+    fn mint(e: Env, to: Address, amount: i128) {
+        require_nonnegative_amount(&e, amount);
+        let admin = storage::get_admin(&e);
+        admin.require_auth();
+        storage::extend_instance(&e);
+
+        receive_balance(&e, &to, amount);
+        mint_voting_units(&e, &to, amount);
+
+        TokenEvents::mint(&e, admin, to, amount);
+    }
+
+    fn set_admin(e: Env, new_admin: Address) {
+        let admin = storage::get_admin(&e);
+        admin.require_auth();
+        storage::extend_instance(&e);
+
+        storage::set_admin(&e, &new_admin);
+
+        VoterTokenEvents::set_admin(&e, admin, new_admin);
+    }
+
+    fn admin(e: Env) -> Address {
+        storage::get_admin(&e)
+    }
+}
+
+#[cfg(feature = "wrapped")]
+#[contractimpl]
+impl WrappedToken for TokenVotes {
+    fn initialize(e: Env, token: Address, governor: Address) {
+        if storage::get_is_init(&e) {
+            panic_with_error!(e, TokenVotesError::AlreadyInitializedError);
+        }
+        storage::extend_instance(&e);
+
+        let underlying_token = TokenClient::new(&e, &token);
+        let decimal = underlying_token.decimals();
+        let symbol = underlying_token.symbol();
+        let name = underlying_token.name();
+        // TODO: Come up with custom symbol and name for the token
+        let token_metadata = TokenMetadata {
+            decimal,
+            name,
+            symbol,
+        };
+        storage::set_metadata(&e, &token_metadata);
+        storage::set_token(&e, &token);
+        storage::set_governor(&e, &governor);
+        storage::set_is_init(&e);
+    }
 
     fn deposit_for(e: Env, from: Address, amount: i128) {
         from.require_auth();
@@ -259,5 +304,33 @@ impl Votes for TokenVotes {
         token.transfer(&e.current_contract_address(), &from, &amount);
 
         VoterTokenEvents::withdraw(&e, from, amount);
+    }
+}
+
+#[cfg(all(feature = "admin", not(feature = "wrapped")))]
+#[contractimpl]
+impl SorobanOnly for TokenVotes {
+    fn initialize(
+        e: Env,
+        admin: Address,
+        governor: Address,
+        decimal: u32,
+        name: String,
+        symbol: String,
+    ) {
+        if storage::get_is_init(&e) {
+            panic_with_error!(e, TokenVotesError::AlreadyInitializedError);
+        }
+        storage::extend_instance(&e);
+
+        storage::set_admin(&e, &admin);
+        storage::set_governor(&e, &governor);
+        let token_metadata = TokenMetadata {
+            decimal,
+            name,
+            symbol,
+        };
+        storage::set_metadata(&e, &token_metadata);
+        storage::set_is_init(&e);
     }
 }

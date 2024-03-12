@@ -1,10 +1,10 @@
 #[cfg(test)]
 use sep_41_token::testutils::MockTokenClient;
-use soroban_governor::types::{Calldata, ProposalStatus, SubCalldata};
+use soroban_governor::types::{Calldata, GovernorSettings, ProposalAction, ProposalStatus};
 use soroban_governor::GovernorContractClient;
 use soroban_sdk::{
     testutils::{Address as _, Events},
-    vec, Address, Env, IntoVal, Symbol, Vec,
+    vec, Address, Env, IntoVal, String, Symbol,
 };
 use soroban_votes::TokenVotesClient;
 use tests::mocks::create_mock_subcall_contract_wasm;
@@ -14,17 +14,16 @@ use tests::{
 };
 
 #[test]
-fn test_execute() {
+fn test_execute_calldata_no_auths() {
     let e = Env::default();
     e.set_default_info();
-    e.mock_all_auths();
 
     let bombadil = Address::generate(&e);
     let frodo = Address::generate(&e);
     let samwise = Address::generate(&e);
     let pippin = Address::generate(&e);
 
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -32,20 +31,26 @@ fn test_execute() {
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let total_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &total_votes);
-    votes_client.deposit_for(&frodo, &total_votes);
+    token_client.mock_all_auths().mint(&frodo, &total_votes);
 
+    votes_client
+        .mock_all_auths()
+        .deposit_for(&frodo, &total_votes);
     let samwise_votes = 8_000 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &samwise, &samwise_votes);
-
+    votes_client
+        .mock_all_auths()
+        .transfer(&frodo, &samwise, &samwise_votes);
     let pippin_votes = 1_000 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &pippin, &pippin_votes);
+    votes_client
+        .mock_all_auths()
+        .transfer(&frodo, &pippin, &pippin_votes);
 
     let governor_transfer_amount: i128 = 10i128.pow(7);
-    token_client.mint(&governor_address, &governor_transfer_amount);
-
-    let (_, _, title, description) = default_proposal_data(&e);
-    let calldata = Calldata {
+    token_client
+        .mock_all_auths()
+        .mint(&governor_address, &governor_transfer_amount);
+    let (title, description, _) = default_proposal_data(&e);
+    let action = ProposalAction::Calldata(Calldata {
         contract_id: token_address,
         function: Symbol::new(&e, "transfer"),
         args: (
@@ -54,17 +59,27 @@ fn test_execute() {
             governor_transfer_amount,
         )
             .into_val(&e),
-    };
+        auths: vec![&e],
+    });
 
     // setup a proposal that is ready to be executed
-    let proposal_id = governor_client.propose(&samwise, &calldata, &vec![&e], &title, &description);
+    let proposal_id =
+        governor_client
+            .mock_all_auths()
+            .propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
-    governor_client.vote(&samwise, &proposal_id, &2);
-    governor_client.vote(&pippin, &proposal_id, &1);
+    governor_client
+        .mock_all_auths()
+        .vote(&samwise, &proposal_id, &1);
+    governor_client
+        .mock_all_auths()
+        .vote(&pippin, &proposal_id, &0);
     e.jump(settings.vote_period);
-    governor_client.close(&proposal_id);
+    governor_client.mock_all_auths().close(&proposal_id);
     e.jump(settings.timelock);
 
+    // remove any potential auth mocking
+    governor_client.set_auths(&[]);
     governor_client.execute(&proposal_id);
 
     // verify auths
@@ -85,7 +100,12 @@ fn test_execute() {
             &e,
             (
                 governor_address.clone(),
-                (Symbol::new(&e, "proposal_executed"), proposal_id).into_val(&e),
+                (
+                    Symbol::new(&e, "proposal_updated"),
+                    proposal_id,
+                    ProposalStatus::Executed as u32
+                )
+                    .into_val(&e),
                 ().into_val(&e)
             )
         ]
@@ -93,16 +113,15 @@ fn test_execute() {
 }
 
 #[test]
-fn test_execute_call_subcall_auth() {
+fn test_execute_calldata_auth_chain() {
     let e = Env::default();
     e.set_default_info();
-    e.mock_all_auths();
     e.budget().reset_unlimited();
 
     let bombadil = Address::generate(&e);
     let frodo = Address::generate(&e);
 
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -115,62 +134,77 @@ fn test_execute_call_subcall_auth() {
 
     // set intial votes
     let frodo_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &frodo_votes);
-    votes_client.deposit_for(&frodo, &frodo_votes);
+    token_client.mock_all_auths().mint(&frodo, &frodo_votes);
+    votes_client
+        .mock_all_auths()
+        .deposit_for(&frodo, &frodo_votes);
 
     // create a proposal
-    let (_, _, title, description) = default_proposal_data(&e);
+    let (title, description, _) = default_proposal_data(&e);
     let call_amount: i128 = 100 * 10i128.pow(7);
-    token_client.mint(&governor_address, &call_amount);
-    let calldata = Calldata {
+    token_client
+        .mock_all_auths()
+        .mint(&governor_address, &call_amount);
+    let action = ProposalAction::Calldata(Calldata {
         contract_id: outter_subcall_address.clone(),
         function: Symbol::new(&e, "call_subcall"),
         args: (inner_subcall_address.clone(), call_amount.clone(), true).into_val(&e),
-    };
-    let sub_calldata: Vec<SubCalldata> = vec![
-        &e,
-        SubCalldata {
-            contract_id: inner_subcall_address.clone(),
-            function: Symbol::new(&e, "subcall"),
-            args: (call_amount.clone(),).into_val(&e),
-            sub_auth: vec![
-                &e,
-                SubCalldata {
-                    contract_id: token_address,
-                    function: Symbol::new(&e, "transfer"),
-                    args: (
-                        governor_address.clone(),
-                        inner_subcall_address.clone(),
-                        call_amount.clone(),
-                    )
-                        .into_val(&e),
-                    sub_auth: vec![&e],
-                },
-            ],
-        },
-    ];
+        auths: vec![
+            &e,
+            Calldata {
+                contract_id: inner_subcall_address.clone(),
+                function: Symbol::new(&e, "subcall"),
+                args: (call_amount.clone(),).into_val(&e),
+                auths: vec![
+                    &e,
+                    Calldata {
+                        contract_id: token_address,
+                        function: Symbol::new(&e, "transfer"),
+                        args: (
+                            governor_address.clone(),
+                            inner_subcall_address.clone(),
+                            call_amount.clone(),
+                        )
+                            .into_val(&e),
+                        auths: vec![&e],
+                    },
+                ],
+            },
+        ],
+    });
 
     let proposal_id =
-        governor_client.propose(&frodo, &calldata, &sub_calldata, &title, &description);
+        governor_client
+            .mock_all_auths()
+            .propose(&frodo, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
-    governor_client.vote(&frodo, &proposal_id, &2);
+    governor_client
+        .mock_all_auths()
+        .vote(&frodo, &proposal_id, &1);
     e.jump(settings.vote_period);
-    governor_client.close(&proposal_id);
+    governor_client.mock_all_auths().close(&proposal_id);
     e.jump(settings.timelock);
+
+    // remove any potential auth mocking
+    governor_client.set_auths(&[]);
     governor_client.execute(&proposal_id);
+
     assert_eq!(token_client.balance(&inner_subcall_address), call_amount);
+    assert_eq!(token_client.balance(&governor_address), 0);
+    let proposal = governor_client.get_proposal(&proposal_id).unwrap();
+    assert_eq!(proposal.data.status, ProposalStatus::Executed);
 }
+
 #[test]
-fn test_execute_call_subcall_no_auth() {
+fn test_execute_calldata_single_auth() {
     let e = Env::default();
     e.set_default_info();
-    e.mock_all_auths();
     e.budget().reset_unlimited();
 
     let bombadil = Address::generate(&e);
     let frodo = Address::generate(&e);
 
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -183,42 +217,187 @@ fn test_execute_call_subcall_no_auth() {
 
     // set intial votes
     let frodo_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &frodo_votes);
-    votes_client.deposit_for(&frodo, &frodo_votes);
+    token_client.mock_all_auths().mint(&frodo, &frodo_votes);
+    votes_client
+        .mock_all_auths()
+        .deposit_for(&frodo, &frodo_votes);
 
     // create a proposal
-    let (_, _, title, description) = default_proposal_data(&e);
+    let (title, description, _) = default_proposal_data(&e);
     let call_amount: i128 = 100 * 10i128.pow(7);
-    token_client.mint(&governor_address, &call_amount);
-    let calldata = Calldata {
+    token_client
+        .mock_all_auths()
+        .mint(&governor_address, &call_amount);
+    let action = ProposalAction::Calldata(Calldata {
         contract_id: outter_subcall_address.clone(),
         function: Symbol::new(&e, "call_subcall"),
         args: (inner_subcall_address.clone(), call_amount.clone(), false).into_val(&e),
-    };
-    let sub_calldata: Vec<SubCalldata> = vec![
-        &e,
-        SubCalldata {
-            contract_id: token_address,
-            function: Symbol::new(&e, "transfer"),
-            args: (
-                governor_address.clone(),
-                inner_subcall_address.clone(),
-                call_amount.clone(),
-            )
-                .into_val(&e),
-            sub_auth: vec![&e],
-        },
-    ];
+        auths: vec![
+            &e,
+            Calldata {
+                contract_id: token_address,
+                function: Symbol::new(&e, "transfer"),
+                args: (
+                    governor_address.clone(),
+                    inner_subcall_address.clone(),
+                    call_amount.clone(),
+                )
+                    .into_val(&e),
+                auths: vec![&e],
+            },
+        ],
+    });
 
     let proposal_id =
-        governor_client.propose(&frodo, &calldata, &sub_calldata, &title, &description);
+        governor_client
+            .mock_all_auths()
+            .propose(&frodo, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
-    governor_client.vote(&frodo, &proposal_id, &2);
+    governor_client
+        .mock_all_auths()
+        .vote(&frodo, &proposal_id, &1);
     e.jump(settings.vote_period);
-    governor_client.close(&proposal_id);
+    governor_client.mock_all_auths().close(&proposal_id);
     e.jump(settings.timelock);
+
+    // remove any potential auth mocking
+    governor_client.set_auths(&[]);
     governor_client.execute(&proposal_id);
+
     assert_eq!(token_client.balance(&inner_subcall_address), call_amount);
+    assert_eq!(token_client.balance(&governor_address), 0);
+    let proposal = governor_client.get_proposal(&proposal_id).unwrap();
+    assert_eq!(proposal.data.status, ProposalStatus::Executed);
+}
+
+#[test]
+fn test_execute_settings() {
+    let e = Env::default();
+    e.set_default_info();
+    e.budget().reset_unlimited();
+
+    let bombadil = Address::generate(&e);
+    let frodo = Address::generate(&e);
+
+    let settings = default_governor_settings(&e);
+    let (governor_address, token_address, votes_address) =
+        create_governor(&e, &bombadil, &settings);
+    let token_client = MockTokenClient::new(&e, &token_address);
+    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let governor_client = GovernorContractClient::new(&e, &governor_address);
+
+    // set intial votes
+    let frodo_votes: i128 = 10_000 * 10i128.pow(7);
+    token_client.mock_all_auths().mint(&frodo, &frodo_votes);
+    votes_client
+        .mock_all_auths()
+        .deposit_for(&frodo, &frodo_votes);
+
+    // create a proposal
+    let new_settings = GovernorSettings {
+        council: Address::generate(&e),
+        proposal_threshold: 829421,
+        vote_delay: 1231,
+        vote_period: 7456,
+        timelock: 6785678,
+        grace_period: 75685678,
+        quorum: 300,
+        counting_type: 1,
+        vote_threshold: 2000,
+    };
+    let (title, description, _) = default_proposal_data(&e);
+    let call_amount: i128 = 100 * 10i128.pow(7);
+    token_client
+        .mock_all_auths()
+        .mint(&governor_address, &call_amount);
+    let action = ProposalAction::Settings(new_settings.clone());
+
+    let proposal_id =
+        governor_client
+            .mock_all_auths()
+            .propose(&frodo, &title, &description, &action);
+    e.jump(settings.vote_delay + 1);
+    governor_client
+        .mock_all_auths()
+        .vote(&frodo, &proposal_id, &1);
+    e.jump(settings.vote_period);
+    governor_client.mock_all_auths().close(&proposal_id);
+    e.jump(settings.timelock);
+
+    // remove any potential auth mocking
+    governor_client.set_auths(&[]);
+    governor_client.execute(&proposal_id);
+
+    let gov_settings = governor_client.settings();
+    assert_eq!(
+        gov_settings.proposal_threshold,
+        new_settings.proposal_threshold
+    );
+    assert_eq!(gov_settings.vote_delay, new_settings.vote_delay);
+    assert_eq!(gov_settings.vote_period, new_settings.vote_period);
+    assert_eq!(gov_settings.timelock, new_settings.timelock);
+    assert_eq!(gov_settings.grace_period, new_settings.grace_period);
+    assert_eq!(gov_settings.quorum, new_settings.quorum);
+    assert_eq!(gov_settings.counting_type, new_settings.counting_type);
+    assert_eq!(gov_settings.vote_threshold, new_settings.vote_threshold);
+}
+
+#[test]
+fn test_execute_upgrade() {
+    let e = Env::default();
+    e.set_default_info();
+    e.budget().reset_unlimited();
+
+    let bombadil = Address::generate(&e);
+    let frodo = Address::generate(&e);
+
+    let settings = default_governor_settings(&e);
+    let (governor_address, token_address, votes_address) =
+        create_governor(&e, &bombadil, &settings);
+    let token_client = MockTokenClient::new(&e, &token_address);
+    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let governor_client = GovernorContractClient::new(&e, &governor_address);
+
+    // set intial votes
+    let frodo_votes: i128 = 10_000 * 10i128.pow(7);
+    token_client.mock_all_auths().mint(&frodo, &frodo_votes);
+    votes_client
+        .mock_all_auths()
+        .deposit_for(&frodo, &frodo_votes);
+
+    // create a proposal
+    let new_wasm = e
+        .deployer()
+        .upload_contract_wasm(sep_41_token::testutils::MockTokenWASM);
+    let (title, description, _) = default_proposal_data(&e);
+    let action = ProposalAction::Upgrade(new_wasm);
+
+    let proposal_id =
+        governor_client
+            .mock_all_auths()
+            .propose(&frodo, &title, &description, &action);
+
+    e.jump(settings.vote_delay + 1);
+    governor_client
+        .mock_all_auths()
+        .vote(&frodo, &proposal_id, &1);
+    e.jump(settings.vote_period);
+    governor_client.mock_all_auths().close(&proposal_id);
+    e.jump(settings.timelock);
+
+    // remove any potential auth mocking
+    governor_client.set_auths(&[]);
+    governor_client.execute(&proposal_id);
+
+    let new_client = MockTokenClient::new(&e, &governor_address);
+    new_client.mock_all_auths().initialize(
+        &bombadil,
+        &7,
+        &String::from_str(&e, "tea"),
+        &String::from_str(&e, "pot"),
+    );
+    new_client.mock_all_auths().mint(&frodo, &123);
+    assert_eq!(new_client.balance(&frodo), 123);
 }
 
 #[test]
@@ -229,7 +408,7 @@ fn test_execute_nonexistent_proposal() {
     e.mock_all_auths();
 
     let bombadil = Address::generate(&e);
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, _, _) = create_governor(&e, &bombadil, &settings);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
@@ -247,7 +426,7 @@ fn test_execute_proposal_not_queued() {
     let frodo = Address::generate(&e);
     let samwise = Address::generate(&e);
     let pippin = Address::generate(&e);
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -267,8 +446,8 @@ fn test_execute_proposal_not_queued() {
     let governor_transfer_amount: i128 = 10_000_000;
     token_client.mint(&samwise, &governor_transfer_amount);
 
-    let (_, _, title, description) = default_proposal_data(&e);
-    let calldata = Calldata {
+    let (title, description, _) = default_proposal_data(&e);
+    let action = ProposalAction::Calldata(Calldata {
         contract_id: token_address,
         function: Symbol::new(&e, "transfer"),
         args: (
@@ -277,12 +456,14 @@ fn test_execute_proposal_not_queued() {
             governor_transfer_amount,
         )
             .into_val(&e),
-    };
+        auths: vec![&e],
+    });
 
-    let proposal_id = governor_client.propose(&samwise, &calldata, &vec![&e], &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
+
     e.jump(settings.vote_delay + 1);
-    governor_client.vote(&samwise, &proposal_id, &2);
-    governor_client.vote(&pippin, &proposal_id, &1);
+    governor_client.vote(&samwise, &proposal_id, &1);
+    governor_client.vote(&pippin, &proposal_id, &0);
     e.jump(settings.vote_period - 1);
     e.jump(settings.timelock);
 
@@ -300,7 +481,7 @@ fn test_execute_timelock_not_met() {
     let frodo = Address::generate(&e);
     let samwise = Address::generate(&e);
     let pippin = Address::generate(&e);
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -320,8 +501,8 @@ fn test_execute_timelock_not_met() {
     let governor_transfer_amount: i128 = 10_000_000;
     token_client.mint(&samwise, &governor_transfer_amount);
 
-    let (_, _, title, description) = default_proposal_data(&e);
-    let calldata = Calldata {
+    let (title, description, _) = default_proposal_data(&e);
+    let action = ProposalAction::Calldata(Calldata {
         contract_id: token_address,
         function: Symbol::new(&e, "transfer"),
         args: (
@@ -330,12 +511,13 @@ fn test_execute_timelock_not_met() {
             governor_transfer_amount,
         )
             .into_val(&e),
-    };
+        auths: vec![&e],
+    });
 
-    let proposal_id = governor_client.propose(&samwise, &calldata, &vec![&e], &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
-    governor_client.vote(&samwise, &proposal_id, &2);
-    governor_client.vote(&pippin, &proposal_id, &1);
+    governor_client.vote(&samwise, &proposal_id, &1);
+    governor_client.vote(&pippin, &proposal_id, &0);
     e.jump(settings.vote_period - 1);
     governor_client.close(&proposal_id);
     e.jump(settings.timelock - 1);

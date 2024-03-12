@@ -1,6 +1,6 @@
-use soroban_sdk::{contractclient, Address, Env, String, Vec};
+use soroban_sdk::{contractclient, Address, Env, String};
 
-use crate::types::{Calldata, GovernorSettings, Proposal, SubCalldata, VoteCount};
+use crate::types::{GovernorSettings, Proposal, ProposalAction, VoteCount};
 
 #[contractclient(name = "GovernorClient")]
 pub trait Governor {
@@ -20,20 +20,18 @@ pub trait Governor {
     ///
     /// ### Arguments
     /// * `creator` - The address of the account creating the proposal
-    /// * `calldata` - The calldata to execute when the proposal is executed
-    /// * `sub_calldata` - The sub calldata to pre-authorize when the proposal is executed
     /// * `title` - The title of the proposal
     /// * `description` - The description of the proposal
+    /// * `action` - The action the proposal will take if passed
     ///
     /// ### Panics
     /// If the proposal is not created successfully
     fn propose(
         e: Env,
         creator: Address,
-        calldata: Calldata,
-        sub_calldata: Vec<SubCalldata>,
         title: String,
         description: String,
+        action: ProposalAction,
     ) -> u32;
 
     /// Get a proposal by its id
@@ -69,14 +67,14 @@ pub trait Governor {
     /// Cancel a proposal. Canceling a proposal requires the proposal to not have opened for voting yet.
     ///
     /// ### Arguments
-    /// * `creator` - The address of the account that created the proposal
+    /// * `from` - The address of the account canceling the proposal
     /// * `proposal_id` - The id of the proposal to cancel
     ///
     /// ### Panics
-    /// * If the proposal_id is invalid
-    /// * If the proposal is has already started voting
-    /// * If the proposal is not created by the creator
-    fn cancel(e: Env, creator: Address, proposal_id: u32);
+    /// * If the `proposal_id` is invalid
+    /// * If the proposal has already started voting
+    /// * If from did not authorize the cancel or does not have the ability to cancel the proposal
+    fn cancel(e: Env, from: Address, proposal_id: u32);
 
     /// Vote on a proposal with the voter's voting power at the time of the proposals voting checkpoint.
     ///

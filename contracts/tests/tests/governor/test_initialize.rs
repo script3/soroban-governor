@@ -14,7 +14,7 @@ fn test_initialize_sets_storage() {
     e.mock_all_auths();
 
     let bombadil = Address::generate(&e);
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, _, _) = create_governor(&e, &bombadil, &settings);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
@@ -36,7 +36,7 @@ fn test_initalize_already_initalized() {
     e.mock_all_auths();
 
     let bombadil = Address::generate(&e);
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, _, votes_address) = create_governor(&e, &bombadil, &settings);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
@@ -51,10 +51,12 @@ fn test_initalize_proprosal_exceeds_time_length() {
     let govenor: GovernorContractClient<'_> = GovernorContractClient::new(&e, &address);
     let votes = Address::generate(&e);
     let settings = GovernorSettings {
+        council: Address::generate(&e),
         proposal_threshold: 1000,
         vote_delay: 500000,
         vote_period: 500000,
         timelock: 814401,
+        grace_period: 500000,
         quorum: 5000,
         counting_type: 6000,
         vote_threshold: 7000,
@@ -69,7 +71,7 @@ fn test_initalize_proprosal_exceeds_vote_period() {
     let address = e.register_contract(None, GovernorContract {});
     let govenor: GovernorContractClient<'_> = GovernorContractClient::new(&e, &address);
     let votes = Address::generate(&e);
-    let mut settings = default_governor_settings();
+    let mut settings = default_governor_settings(&e);
     settings.vote_period = 7 * 24 * 60 * 60 + 1;
     govenor.initialize(&votes, &settings);
 }

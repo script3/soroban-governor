@@ -23,6 +23,13 @@ impl VoterTokenEvents {
         e.events().publish(topics, (old_votes, new_votes));
     }
 
+    #[cfg(feature = "admin")]
+    pub fn set_admin(e: &Env, admin: Address, new_admin: Address) {
+        let topics = (Symbol::new(e, "set_admin"), admin);
+        e.events().publish(topics, new_admin);
+    }
+
+    #[cfg(feature = "wrapped")]
     /// Emitted when an account deposits tokens into the votes contract
     ///
     /// - topics - `["deposit", account: Address]`
@@ -31,7 +38,7 @@ impl VoterTokenEvents {
         let topics = (Symbol::new(e, "deposit"), account);
         e.events().publish(topics, amount);
     }
-
+    #[cfg(feature = "wrapped")]
     /// Emitted when an account withdraws tokens from the votes contract
     ///
     /// - topics - `["withdraw", account: Address]`

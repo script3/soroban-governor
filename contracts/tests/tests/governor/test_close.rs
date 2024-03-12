@@ -23,7 +23,7 @@ fn test_close_proposal_queued() {
     let samwise = Address::generate(&e);
     let pippin = Address::generate(&e);
 
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -40,13 +40,12 @@ fn test_close_proposal_queued() {
     let pippin_votes = 100 * 10i128.pow(7);
     votes_client.transfer(&frodo, &pippin, &pippin_votes);
 
-    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+    let (title, description, action) = default_proposal_data(&e);
 
-    let proposal_id =
-        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
-    governor_client.vote(&samwise, &proposal_id, &2);
-    governor_client.vote(&pippin, &proposal_id, &1);
+    governor_client.vote(&samwise, &proposal_id, &1);
+    governor_client.vote(&pippin, &proposal_id, &0);
     e.jump(settings.vote_period - 1);
 
     governor_client.close(&proposal_id);
@@ -56,7 +55,7 @@ fn test_close_proposal_queued() {
 
     // verify chain results
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
-    assert_eq!(proposal.data.status, ProposalStatus::Queued);
+    assert_eq!(proposal.data.status, ProposalStatus::Successful);
 
     // verify events
     let events = e.events().all();
@@ -67,11 +66,20 @@ fn test_close_proposal_queued() {
             &e,
             (
                 governor_address.clone(),
-                (Symbol::new(&e, "proposal_queued"), proposal_id).into_val(&e),
-                (e.ledger().sequence() + settings.timelock).into_val(&e)
+                (
+                    Symbol::new(&e, "proposal_updated"),
+                    proposal_id,
+                    ProposalStatus::Successful as u32
+                )
+                    .into_val(&e),
+                ().into_val(&e)
             )
         ]
     );
+
+    // verify creator can create another proposal
+    let proposal_id_new = governor_client.propose(&samwise, &title, &description, &action);
+    assert_eq!(proposal_id_new, proposal_id + 1);
 }
 
 #[test]
@@ -85,7 +93,7 @@ fn test_close_quorum_not_met() {
     let samwise = Address::generate(&e);
     let pippin = Address::generate(&e);
 
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -102,13 +110,12 @@ fn test_close_quorum_not_met() {
     let pippin_votes = 10 * 10i128.pow(7);
     votes_client.transfer(&frodo, &pippin, &pippin_votes);
 
-    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+    let (title, description, action) = default_proposal_data(&e);
 
-    let proposal_id =
-        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
-    governor_client.vote(&samwise, &proposal_id, &2);
-    governor_client.vote(&pippin, &proposal_id, &1);
+    governor_client.vote(&samwise, &proposal_id, &1);
+    governor_client.vote(&pippin, &proposal_id, &0);
     e.jump(settings.vote_period - 1);
 
     governor_client.close(&proposal_id);
@@ -126,11 +133,20 @@ fn test_close_quorum_not_met() {
             &e,
             (
                 governor_address.clone(),
-                (Symbol::new(&e, "proposal_defeated"), proposal_id).into_val(&e),
+                (
+                    Symbol::new(&e, "proposal_updated"),
+                    proposal_id,
+                    ProposalStatus::Defeated as u32
+                )
+                    .into_val(&e),
                 ().into_val(&e)
             )
         ]
     );
+
+    // verify creator can create another proposal
+    let proposal_id_new = governor_client.propose(&samwise, &title, &description, &action);
+    assert_eq!(proposal_id_new, proposal_id + 1);
 }
 
 #[test]
@@ -143,7 +159,7 @@ fn test_close_vote_threshold_not_met() {
     let frodo = Address::generate(&e);
     let samwise = Address::generate(&e);
     let pippin = Address::generate(&e);
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -160,13 +176,12 @@ fn test_close_vote_threshold_not_met() {
     let pippin_votes = 200 * 10i128.pow(7);
     votes_client.transfer(&frodo, &pippin, &pippin_votes);
 
-    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+    let (title, description, action) = default_proposal_data(&e);
 
-    let proposal_id =
-        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
-    governor_client.vote(&samwise, &proposal_id, &2);
-    governor_client.vote(&pippin, &proposal_id, &1);
+    governor_client.vote(&samwise, &proposal_id, &1);
+    governor_client.vote(&pippin, &proposal_id, &0);
     e.jump(settings.vote_period - 1);
 
     governor_client.close(&proposal_id);
@@ -184,11 +199,20 @@ fn test_close_vote_threshold_not_met() {
             &e,
             (
                 governor_address.clone(),
-                (Symbol::new(&e, "proposal_defeated"), proposal_id).into_val(&e),
+                (
+                    Symbol::new(&e, "proposal_updated"),
+                    proposal_id,
+                    ProposalStatus::Defeated as u32
+                )
+                    .into_val(&e),
                 ().into_val(&e)
             )
         ]
     );
+
+    // verify creator can create another proposal
+    let proposal_id_new = governor_client.propose(&samwise, &title, &description, &action);
+    assert_eq!(proposal_id_new, proposal_id + 1);
 }
 
 #[test]
@@ -203,7 +227,7 @@ fn test_close_tracks_quorum_with_counting_type() {
     let pippin = Address::generate(&e);
     let merry = Address::generate(&e);
 
-    let mut settings = default_governor_settings();
+    let mut settings = default_governor_settings(&e);
     settings.counting_type = 0b011; // include against and abstain in quorum
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
@@ -224,21 +248,24 @@ fn test_close_tracks_quorum_with_counting_type() {
     let merry_votes = 90 * 10i128.pow(7);
     votes_client.transfer(&frodo, &merry, &merry_votes);
 
-    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+    let (title, description, action) = default_proposal_data(&e);
 
-    let proposal_id =
-        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
-    governor_client.vote(&samwise, &proposal_id, &2);
-    governor_client.vote(&pippin, &proposal_id, &1);
-    governor_client.vote(&merry, &proposal_id, &0);
+    governor_client.vote(&samwise, &proposal_id, &1);
+    governor_client.vote(&pippin, &proposal_id, &0);
+    governor_client.vote(&merry, &proposal_id, &2);
     e.jump(settings.vote_period);
 
     governor_client.close(&proposal_id);
 
     // verify chain results
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
-    assert_eq!(proposal.data.status, ProposalStatus::Queued);
+    assert_eq!(proposal.data.status, ProposalStatus::Successful);
+
+    // verify creator can create another proposal
+    let proposal_id_new = governor_client.propose(&samwise, &title, &description, &action);
+    assert_eq!(proposal_id_new, proposal_id + 1);
 }
 
 #[test]
@@ -250,7 +277,7 @@ fn test_close_nonexistent_proposal() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -276,7 +303,7 @@ fn test_close_vote_period_unfinished() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let settings = default_governor_settings();
+    let settings = default_governor_settings(&e);
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
@@ -287,12 +314,11 @@ fn test_close_vote_period_unfinished() {
     token_client.mint(&samwise, &samwise_mint_amount);
     votes_client.deposit_for(&samwise, &samwise_mint_amount);
 
-    let (calldata, sub_calldata, title, description) = default_proposal_data(&e);
+    let (title, description, action) = default_proposal_data(&e);
 
-    let proposal_id =
-        governor_client.propose(&samwise, &calldata, &sub_calldata, &title, &description);
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
-    governor_client.vote(&samwise, &proposal_id, &2);
+    governor_client.vote(&samwise, &proposal_id, &1);
     e.jump(settings.vote_period - 2);
 
     governor_client.close(&proposal_id);
