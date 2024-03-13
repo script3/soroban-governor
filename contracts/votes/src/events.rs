@@ -1,8 +1,8 @@
 use soroban_sdk::{symbol_short, Address, Env, Symbol};
 
-pub struct VoterTokenEvents {}
+pub struct TokenVotesEvents {}
 
-impl VoterTokenEvents {
+impl TokenVotesEvents {
     /// Emitted when a voter delegates their votes to an address
     ///
     /// - topics - `["delegate", delegator: Address, delegatee: Address]`

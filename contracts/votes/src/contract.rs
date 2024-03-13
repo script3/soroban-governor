@@ -9,7 +9,7 @@ use crate::{
     checkpoints::{upper_lookup, Checkpoint},
     constants::MAX_CHECKPOINT_AGE_LEDGERS,
     error::TokenVotesError,
-    events::VoterTokenEvents,
+    events::TokenVotesEvents,
     storage::{self, set_delegate, TokenMetadata},
     validation::require_nonnegative_amount,
     votes::Votes,
@@ -219,7 +219,7 @@ impl Votes for TokenVotes {
         }
         set_delegate(&e, &account, &delegatee);
 
-        VoterTokenEvents::delegate(&e, account, delegatee, cur_delegate)
+        TokenVotesEvents::delegate(&e, account, delegatee, cur_delegate)
     }
 }
 
@@ -244,7 +244,7 @@ impl Admin for TokenVotes {
 
         storage::set_admin(&e, &new_admin);
 
-        VoterTokenEvents::set_admin(&e, admin, new_admin);
+        TokenVotesEvents::set_admin(&e, admin, new_admin);
     }
 
     fn admin(e: Env) -> Address {
@@ -286,7 +286,7 @@ impl WrappedToken for TokenVotes {
 
         balance::mint_balance(&e, &from, amount);
 
-        VoterTokenEvents::deposit(&e, from, amount);
+        TokenVotesEvents::deposit(&e, from, amount);
     }
 
     fn withdraw_to(e: Env, from: Address, amount: i128) {
@@ -298,7 +298,7 @@ impl WrappedToken for TokenVotes {
         let token = TokenClient::new(&e, &storage::get_token(&e));
         token.transfer(&e.current_contract_address(), &from, &amount);
 
-        VoterTokenEvents::withdraw(&e, from, amount);
+        TokenVotesEvents::withdraw(&e, from, amount);
     }
 }
 

@@ -7,7 +7,7 @@ use crate::{
     balance,
     constants::SCALAR_7,
     error::TokenVotesError,
-    events::VoterTokenEvents,
+    events::TokenVotesEvents,
     storage::{self, EmissionConfig, EmissionData, UserEmissionData},
 };
 
@@ -43,7 +43,7 @@ pub fn claim_emissions(e: &Env, total_supply: i128, user: &Address, balance: i12
 
             balance::mint_balance(e, &user, to_claim);
 
-            VoterTokenEvents::claim(&e, user.clone(), to_claim);
+            TokenVotesEvents::claim(&e, user.clone(), to_claim);
         } else {
             storage::set_user_emission_data(e, user, &user_data);
         }
@@ -127,7 +127,7 @@ pub fn set_emissions(e: &Env, total_supply: i128, new_tokens: i128, new_expirati
     };
     storage::set_emission_config(e, &new_config);
 
-    VoterTokenEvents::set_emissions(e, eps, new_expiration);
+    TokenVotesEvents::set_emissions(e, eps, new_expiration);
 }
 
 /// Update the backstop emissions index for deposits

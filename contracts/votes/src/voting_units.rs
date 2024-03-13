@@ -3,7 +3,7 @@ use soroban_sdk::{panic_with_error, Address, Env, Vec};
 use crate::{
     checkpoints::{add_user_checkpoint, Checkpoint},
     error::TokenVotesError,
-    events::VoterTokenEvents,
+    events::TokenVotesEvents,
     storage,
 };
 
@@ -35,7 +35,7 @@ pub fn move_voting_units(
             );
             add_user_checkpoint(e, vote_ledgers, from, user_checkpoint);
 
-            VoterTokenEvents::votes_changed(e, from.clone(), prev_voting_units, voting_units);
+            TokenVotesEvents::votes_changed(e, from.clone(), prev_voting_units, voting_units);
         }
         if let Some(to) = to {
             // Increase voting units of `to` and push their old units
@@ -53,7 +53,7 @@ pub fn move_voting_units(
             );
             add_user_checkpoint(e, vote_ledgers, to, user_checkpoint);
 
-            VoterTokenEvents::votes_changed(e, to.clone(), prev_voting_units, voting_units);
+            TokenVotesEvents::votes_changed(e, to.clone(), prev_voting_units, voting_units);
         }
     }
 }
