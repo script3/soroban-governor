@@ -5,7 +5,7 @@ use soroban_sdk::{
 
 use crate::{
     allowance::{create_allowance, spend_allowance},
-    balance::{receive_balance, spend_balance},
+    balance,
     checkpoints::{upper_lookup, Checkpoint},
     constants::MAX_CHECKPOINT_AGE_LEDGERS,
     error::TokenVotesError,
@@ -13,9 +13,7 @@ use crate::{
     storage::{self, set_delegate, TokenMetadata},
     validation::require_nonnegative_amount,
     votes::Votes,
-    voting_units::{
-        burn_voting_units, mint_voting_units, move_voting_units, transfer_voting_units,
-    },
+    voting_units::move_voting_units,
 };
 
 #[cfg(feature = "admin")]
@@ -25,6 +23,12 @@ use crate::votes::Admin;
 use crate::votes::WrappedToken;
 #[cfg(feature = "wrapped")]
 use soroban_sdk::token::TokenClient;
+
+#[cfg(feature = "emissions")]
+use crate::{
+    emissions::{claim_emissions, set_emissions},
+    votes::Emissions,
+};
 
 #[cfg(all(feature = "admin", not(feature = "wrapped")))]
 use crate::votes::SorobanOnly;
@@ -60,9 +64,7 @@ impl Token for TokenVotes {
         require_nonnegative_amount(&e, amount);
         storage::extend_instance(&e);
 
-        spend_balance(&e, &from, amount);
-        receive_balance(&e, &to, amount);
-        transfer_voting_units(&e, &from, &to, amount);
+        balance::transfer_balance(&e, &from, &to, amount);
 
         TokenEvents::transfer(&e, from, to, amount);
     }
@@ -73,9 +75,7 @@ impl Token for TokenVotes {
         storage::extend_instance(&e);
 
         spend_allowance(&e, &from, &spender, amount);
-        spend_balance(&e, &from, amount);
-        receive_balance(&e, &to, amount);
-        transfer_voting_units(&e, &from, &to, amount);
+        balance::transfer_balance(&e, &from, &to, amount);
 
         TokenEvents::transfer(&e, from, to, amount);
     }
@@ -86,8 +86,7 @@ impl Token for TokenVotes {
         require_nonnegative_amount(&e, amount);
         storage::extend_instance(&e);
 
-        spend_balance(&e, &from, amount);
-        burn_voting_units(&e, &from, amount);
+        balance::burn_balance(&e, &from, amount);
 
         // burn underlying from the tokens held by this contract
         #[cfg(feature = "wrapped")]
@@ -102,8 +101,7 @@ impl Token for TokenVotes {
         storage::extend_instance(&e);
 
         spend_allowance(&e, &from, &spender, amount);
-        spend_balance(&e, &from, amount);
-        burn_voting_units(&e, &from, amount);
+        balance::burn_balance(&e, &from, amount);
 
         // burn underlying from the tokens held by this contract
         #[cfg(feature = "wrapped")]
@@ -234,8 +232,7 @@ impl Admin for TokenVotes {
         admin.require_auth();
         storage::extend_instance(&e);
 
-        receive_balance(&e, &to, amount);
-        mint_voting_units(&e, &to, amount);
+        balance::mint_balance(&e, &to, amount);
 
         TokenEvents::mint(&e, admin, to, amount);
     }
@@ -287,8 +284,7 @@ impl WrappedToken for TokenVotes {
         let token = TokenClient::new(&e, &storage::get_token(&e));
         token.transfer(&from, &e.current_contract_address(), &amount);
 
-        receive_balance(&e, &from, amount);
-        mint_voting_units(&e, &from, amount);
+        balance::mint_balance(&e, &from, amount);
 
         VoterTokenEvents::deposit(&e, from, amount);
     }
@@ -297,8 +293,7 @@ impl WrappedToken for TokenVotes {
         from.require_auth();
         storage::extend_instance(&e);
 
-        spend_balance(&e, &from, amount);
-        burn_voting_units(&e, &from, amount);
+        balance::burn_balance(&e, &from, amount);
 
         let token = TokenClient::new(&e, &storage::get_token(&e));
         token.transfer(&e.current_contract_address(), &from, &amount);
@@ -332,5 +327,27 @@ impl SorobanOnly for TokenVotes {
         };
         storage::set_metadata(&e, &token_metadata);
         storage::set_is_init(&e);
+    }
+}
+
+#[cfg(feature = "emissions")]
+#[contractimpl]
+impl Emissions for TokenVotes {
+    fn claim(e: Env, address: Address) -> i128 {
+        address.require_auth();
+        let total_supply = storage::get_total_supply(&e).to_checkpoint_data().1;
+        let balance = storage::get_balance(&e, &address);
+        claim_emissions(&e, total_supply, &address, balance)
+    }
+
+    fn set_emis(e: Env, tokens: i128, expiration: u64) {
+        let governor = storage::get_governor(&e);
+        governor.require_auth();
+
+        let token = TokenClient::new(&e, &storage::get_token(&e));
+        token.transfer(&governor, &e.current_contract_address(), &tokens);
+
+        let total_supply = storage::get_total_supply(&e).to_checkpoint_data().1;
+        set_emissions(&e, total_supply, tokens, expiration);
     }
 }

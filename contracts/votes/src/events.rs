@@ -38,6 +38,7 @@ impl VoterTokenEvents {
         let topics = (Symbol::new(e, "deposit"), account);
         e.events().publish(topics, amount);
     }
+
     #[cfg(feature = "wrapped")]
     /// Emitted when an account withdraws tokens from the votes contract
     ///
@@ -46,5 +47,25 @@ impl VoterTokenEvents {
     pub fn withdraw(e: &Env, account: Address, amount: i128) {
         let topics = (Symbol::new(e, "withdraw"), account);
         e.events().publish(topics, amount);
+    }
+
+    #[cfg(feature = "emissions")]
+    /// Emitted when an account claims emissions
+    ///
+    /// - topics - `["claim", account: Address]`
+    /// - data - `[amount: i128]`
+    pub fn claim(e: &Env, account: Address, amount: i128) {
+        let topics = (Symbol::new(e, "claim"), account);
+        e.events().publish(topics, amount);
+    }
+
+    #[cfg(feature = "emissions")]
+    /// Emitted when a new emission configuration is set
+    ///
+    /// - topics - `["set_emissions", eps: u64, expiration: u64]`
+    /// - data - `[]`
+    pub fn set_emissions(e: &Env, eps: u64, expiration: u64) {
+        let topics = (Symbol::new(e, "set_emissions"), eps, expiration);
+        e.events().publish(topics, ());
     }
 }
