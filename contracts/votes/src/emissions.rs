@@ -245,7 +245,7 @@ mod tests {
         let user = Address::generate(&e);
         let contract = e.register_contract(None, crate::TokenVotes {});
 
-        let total_suppy = 1_123_456 * SCALAR_7;
+        let total_supply = 1_123_456 * SCALAR_7;
         let balance = 50_000 * SCALAR_7;
         let emis_config = EmissionConfig {
             expiration: t_now + ONE_DAY * 5,
@@ -265,7 +265,7 @@ mod tests {
             storage::set_emission_data(&e, &emis_data);
             storage::set_user_emission_data(&e, &user, &user_data);
 
-            update_emissions(&e, total_suppy, &user, balance);
+            update_emissions(&e, total_supply, &user, balance);
 
             let new_emis_data = storage::get_emission_data(&e).unwrap();
             assert_eq!(new_emis_data.index, 1234567 + 384527);
@@ -294,7 +294,7 @@ mod tests {
         let user = Address::generate(&e);
         let contract = e.register_contract(None, crate::TokenVotes {});
 
-        let total_suppy = 1_123_456 * SCALAR_7;
+        let total_supply = 1_123_456 * SCALAR_7;
         let balance = 1000 * SCALAR_7;
         let emis_config = EmissionConfig {
             expiration: t_now + ONE_DAY * 5,
@@ -309,7 +309,7 @@ mod tests {
             storage::set_emission_config(&e, &emis_config);
             storage::set_emission_data(&e, &emis_data);
 
-            update_emissions(&e, total_suppy, &user, balance);
+            update_emissions(&e, total_supply, &user, balance);
 
             let new_emis_data = storage::get_emission_data(&e).unwrap();
             assert_eq!(new_emis_data.index, 1000 + 384527);
@@ -338,7 +338,7 @@ mod tests {
         let user = Address::generate(&e);
         let contract = e.register_contract(None, crate::TokenVotes {});
 
-        let total_suppy = 1_123_456 * SCALAR_7;
+        let total_supply = 1_123_456 * SCALAR_7;
         let balance = 0;
         let emis_config = EmissionConfig {
             expiration: t_now + ONE_DAY * 5,
@@ -353,7 +353,7 @@ mod tests {
             storage::set_emission_config(&e, &emis_config);
             storage::set_emission_data(&e, &emis_data);
 
-            update_emissions(&e, total_suppy, &user, balance);
+            update_emissions(&e, total_supply, &user, balance);
 
             let new_emis_data = storage::get_emission_data(&e).unwrap();
             assert_eq!(new_emis_data.index, 1000 + 384527);
@@ -382,7 +382,7 @@ mod tests {
         let user = Address::generate(&e);
         let contract = e.register_contract(None, crate::TokenVotes {});
 
-        let total_suppy = 1_123_456 * SCALAR_7;
+        let total_supply = 1_123_456 * SCALAR_7;
         let balance = 50_000 * SCALAR_7;
         let emis_config = EmissionConfig {
             expiration: t_now + ONE_DAY * 5,
@@ -402,7 +402,7 @@ mod tests {
             storage::set_emission_data(&e, &emis_data);
             storage::set_user_emission_data(&e, &user, &user_data);
 
-            update_emissions(&e, total_suppy, &user, balance);
+            update_emissions(&e, total_supply, &user, balance);
 
             let new_emis_data = storage::get_emission_data(&e).unwrap();
             assert_eq!(new_emis_data.index, 1234567);
@@ -431,7 +431,7 @@ mod tests {
         let user = Address::generate(&e);
         let contract = e.register_contract(None, crate::TokenVotes {});
 
-        let total_suppy = 123_456 * SCALAR_7;
+        let total_supply = 123_456 * SCALAR_7;
         let balance = 42 * SCALAR_7;
         let emis_config = EmissionConfig {
             expiration: t_now - 1000,
@@ -451,7 +451,7 @@ mod tests {
             storage::set_emission_data(&e, &emis_data);
             storage::set_user_emission_data(&e, &user, &user_data);
 
-            update_emissions(&e, total_suppy, &user, balance);
+            update_emissions(&e, total_supply, &user, balance);
 
             let new_emis_data = storage::get_emission_data(&e).unwrap();
             assert_eq!(new_emis_data.index, 4050);
@@ -480,10 +480,10 @@ mod tests {
         let user = Address::generate(&e);
         let contract = e.register_contract(None, crate::TokenVotes {});
 
-        let total_suppy = 100 * SCALAR_7;
+        let total_supply = 100 * SCALAR_7;
         let balance = 5 * SCALAR_7;
         e.as_contract(&contract, || {
-            update_emissions(&e, total_suppy, &user, balance);
+            update_emissions(&e, total_supply, &user, balance);
 
             assert!(storage::get_emission_data(&e).is_none());
             assert!(storage::get_user_emission_data(&e, &user).is_none());
@@ -508,7 +508,7 @@ mod tests {
         let user = Address::generate(&e);
         let contract = e.register_contract(None, crate::TokenVotes {});
 
-        let total_suppy = 23_456 * SCALAR_7;
+        let total_supply = 23_456 * SCALAR_7;
         let balance = 0;
         let emis_config = EmissionConfig {
             expiration: t_now + ONE_DAY * 5,
@@ -528,7 +528,7 @@ mod tests {
             storage::set_emission_data(&e, &emis_data);
             storage::set_user_emission_data(&e, &user, &user_data);
 
-            update_emissions(&e, total_suppy, &user, balance);
+            update_emissions(&e, total_supply, &user, balance);
 
             let new_emis_data = storage::get_emission_data(&e).unwrap();
             assert_eq!(new_emis_data.index, 1052609 + 1234567);
@@ -559,7 +559,7 @@ mod tests {
         let user = Address::generate(&e);
         let contract = e.register_contract(None, crate::TokenVotes {});
 
-        let total_suppy = 1_123_456 * SCALAR_7;
+        let total_supply = 1_123_456 * SCALAR_7;
         let balance = 50_000 * SCALAR_7;
         let emis_config = EmissionConfig {
             expiration: t_now + ONE_DAY * 5,
@@ -579,7 +579,7 @@ mod tests {
             storage::set_emission_data(&e, &emis_data);
             storage::set_user_emission_data(&e, &user, &user_data);
 
-            let result = claim_emissions(&e, total_suppy, &user, balance);
+            let result = claim_emissions(&e, total_supply, &user, balance);
 
             let new_emis_data = storage::get_emission_data(&e).unwrap();
             assert_eq!(new_emis_data.index, 1234567 + 384527);
@@ -597,7 +597,7 @@ mod tests {
     }
 
     #[test]
-    fn test_claim_emissions_alread_updated_and_delegated() {
+    fn test_claim_emissions_already_updated_and_delegated() {
         let e = Env::default();
         let t_now = 1500000000;
         e.ledger().set(LedgerInfo {
@@ -615,7 +615,7 @@ mod tests {
         let samwise = Address::generate(&e);
         let contract = e.register_contract(None, crate::TokenVotes {});
 
-        let total_suppy = 1_123_456 * SCALAR_7;
+        let total_supply = 1_123_456 * SCALAR_7;
         let balance = 50_000 * SCALAR_7;
         let emis_config = EmissionConfig {
             expiration: t_now + ONE_DAY * 5,
@@ -636,7 +636,7 @@ mod tests {
             storage::set_user_emission_data(&e, &user, &user_data);
             storage::set_delegate(&e, &user, &samwise);
 
-            let result = claim_emissions(&e, total_suppy, &user, balance);
+            let result = claim_emissions(&e, total_supply, &user, balance);
 
             let new_emis_data = storage::get_emission_data(&e).unwrap();
             assert_eq!(new_emis_data.index, 1234567);
@@ -673,10 +673,10 @@ mod tests {
         let user = Address::generate(&e);
         let contract = e.register_contract(None, crate::TokenVotes {});
 
-        let total_suppy = 100 * SCALAR_7;
+        let total_supply = 100 * SCALAR_7;
         let balance = 5 * SCALAR_7;
         e.as_contract(&contract, || {
-            let result = claim_emissions(&e, total_suppy, &user, balance);
+            let result = claim_emissions(&e, total_supply, &user, balance);
 
             assert_eq!(result, 0);
             assert!(storage::get_emission_data(&e).is_none());
@@ -702,7 +702,7 @@ mod tests {
         let user = Address::generate(&e);
         let contract = e.register_contract(None, crate::TokenVotes {});
 
-        let total_suppy = 23_456 * SCALAR_7;
+        let total_supply = 23_456 * SCALAR_7;
         let balance = 0;
         let emis_config = EmissionConfig {
             expiration: t_now + ONE_DAY * 5,
@@ -722,7 +722,7 @@ mod tests {
             storage::set_emission_data(&e, &emis_data);
             storage::set_user_emission_data(&e, &user, &user_data);
 
-            let result = claim_emissions(&e, total_suppy, &user, balance);
+            let result = claim_emissions(&e, total_supply, &user, balance);
 
             assert_eq!(result, 0);
             let new_emis_data = storage::get_emission_data(&e).unwrap();
@@ -759,11 +759,11 @@ mod tests {
 
         let contract = e.register_contract(None, crate::TokenVotes {});
 
-        let total_suppy = 654_321 * SCALAR_7;
+        let total_supply = 654_321 * SCALAR_7;
         let new_tokens = 14_000 * SCALAR_7;
         let new_expiration = t_now + ONE_DAY * 14;
         e.as_contract(&contract, || {
-            set_emissions(&e, total_suppy, new_tokens, new_expiration);
+            set_emissions(&e, total_supply, new_tokens, new_expiration);
 
             let new_config = storage::get_emission_config(&e).unwrap();
             assert_eq!(new_config.expiration, new_expiration);
@@ -791,7 +791,7 @@ mod tests {
 
         let contract = e.register_contract(None, crate::TokenVotes {});
 
-        let total_suppy = 654_321 * SCALAR_7;
+        let total_supply = 654_321 * SCALAR_7;
 
         let emis_config = EmissionConfig {
             expiration: t_now - 1000,
@@ -808,7 +808,7 @@ mod tests {
             storage::set_emission_config(&e, &emis_config);
             storage::set_emission_data(&e, &emis_data);
 
-            set_emissions(&e, total_suppy, new_tokens, new_expiration);
+            set_emissions(&e, total_supply, new_tokens, new_expiration);
 
             let new_config = storage::get_emission_config(&e).unwrap();
             assert_eq!(new_config.expiration, new_expiration);
@@ -836,7 +836,7 @@ mod tests {
 
         let contract = e.register_contract(None, crate::TokenVotes {});
 
-        let total_suppy = 654_321 * SCALAR_7;
+        let total_supply = 654_321 * SCALAR_7;
 
         let emis_config = EmissionConfig {
             expiration: t_now + 5000,
@@ -853,7 +853,7 @@ mod tests {
             storage::set_emission_config(&e, &emis_config);
             storage::set_emission_data(&e, &emis_data);
 
-            set_emissions(&e, total_suppy, new_tokens, new_expiration);
+            set_emissions(&e, total_supply, new_tokens, new_expiration);
 
             let new_config = storage::get_emission_config(&e).unwrap();
             assert_eq!(new_config.expiration, new_expiration);
