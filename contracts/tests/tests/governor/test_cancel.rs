@@ -72,6 +72,10 @@ fn test_cancel() {
             )
         ]
     );
+
+    // verify creator can create another proposal
+    let proposal_id_new = governor_client.propose(&samwise, &title, &description, &action);
+    assert_eq!(proposal_id_new, proposal_id + 1);
 }
 
 #[test]
@@ -139,6 +143,10 @@ fn test_cancel_council() {
             )
         ]
     );
+
+    // verify creator can create another proposal
+    let proposal_id_new = governor_client.propose(&samwise, &title, &description, &action);
+    assert_eq!(proposal_id_new, proposal_id + 1);
 }
 
 #[test]

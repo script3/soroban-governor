@@ -194,6 +194,7 @@ impl Governor for GovernorContract {
         }
         proposal_data.status = ProposalStatus::Canceled;
         storage::set_proposal_data(&e, proposal_id, &proposal_data);
+        storage::del_open_proposal(&e, &proposal_data.creator);
         GovernorEvents::proposal_canceled(&e, proposal_id);
     }
 
