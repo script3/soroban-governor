@@ -71,7 +71,8 @@ fn test_close_successful() {
                 (
                     Symbol::new(&e, "proposal_voting_closed"),
                     proposal_id,
-                    ProposalStatus::Successful as u32
+                    ProposalStatus::Successful as u32,
+                    e.ledger().sequence() + settings.timelock
                 )
                     .into_val(&e),
                 proposal_votes.into_val(&e)
@@ -140,7 +141,8 @@ fn test_close_defeated_quorum_not_met() {
                 (
                     Symbol::new(&e, "proposal_voting_closed"),
                     proposal_id,
-                    ProposalStatus::Defeated as u32
+                    ProposalStatus::Defeated as u32,
+                    0 as u32
                 )
                     .into_val(&e),
                 proposal_votes.into_val(&e)
@@ -208,7 +210,8 @@ fn test_close_defeated_threshold_not_met() {
                 (
                     Symbol::new(&e, "proposal_voting_closed"),
                     proposal_id,
-                    ProposalStatus::Defeated as u32
+                    ProposalStatus::Defeated as u32,
+                    0 as u32
                 )
                     .into_val(&e),
                 proposal_votes.into_val(&e)

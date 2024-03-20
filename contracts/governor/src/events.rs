@@ -36,15 +36,22 @@ impl GovernorEvents {
         e.events().publish(topics, ());
     }
 
-    /// Emitted when a proposal is closed
+    /// Emitted when a proposal voting period is closed
     ///
-    /// - topics - `["proposal_closed", proposal_id: u32, status: u32]`
+    /// - topics - `["proposal_voting_closed", proposal_id: u32, status: u32, eta: u32]`
     /// - data - `final_votes: VoteCount`
-    pub fn proposal_voting_closed(e: &Env, proposal_id: u32, status: u32, final_votes: VoteCount) {
+    pub fn proposal_voting_closed(
+        e: &Env,
+        proposal_id: u32,
+        status: u32,
+        eta: u32,
+        final_votes: VoteCount,
+    ) {
         let topics = (
             Symbol::new(&e, "proposal_voting_closed"),
             proposal_id,
             status,
+            eta,
         );
         e.events().publish(topics, final_votes);
     }

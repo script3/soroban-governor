@@ -142,6 +142,7 @@ impl Governor for GovernorContract {
             &e,
             proposal_id,
             proposal_data.status as u32,
+            proposal_data.eta,
             vote_count,
         );
     }
