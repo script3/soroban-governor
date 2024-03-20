@@ -84,10 +84,17 @@ pub enum ProposalAction {
 #[derive(Clone)]
 #[contracttype]
 pub struct ProposalData {
+    /// The address of the account creating the proposal
     pub creator: Address,
+    /// The ledger sequence when the voting period begins
     pub vote_start: u32,
+    /// The ledger sequence when the voting period ends
     pub vote_end: u32,
+    /// The ledger sequence when the proposal will be executed, or zero if no execution has been scheduled
+    pub eta: u32,
+    /// The status of the proposal
     pub status: ProposalStatus,
+    /// Whether the proposal is executable
     pub executable: bool,
 }
 
@@ -112,18 +119,16 @@ pub struct VoteCount {
 #[repr(u32)]
 #[contracttype]
 pub enum ProposalStatus {
-    /// The proposal is pending and is not open for voting
-    Pending = 0,
-    /// The proposal is active and can be voted on
-    Active = 1,
+    /// The proposal exists and voting has not been closed
+    Open = 0,
     /// The proposal was voted for. If the proposal is executable, the timelock begins once this state is reached.
-    Successful = 2,
+    Successful = 1,
     /// The proposal was voted against
-    Defeated = 3,
+    Defeated = 2,
     /// The proposal did not reach quorum before the voting period ended
-    Expired = 4,
+    Expired = 3,
     /// The proposal has been executed
-    Executed = 5,
+    Executed = 4,
     /// The proposal has been canceled
-    Canceled = 6,
+    Canceled = 5,
 }

@@ -94,7 +94,7 @@ fn test_propose_calldata() {
         settings.vote_delay + settings.vote_period
     );
 
-    assert_eq!(proposal.data.status, ProposalStatus::Pending);
+    assert_eq!(proposal.data.status, ProposalStatus::Open);
 
     // verify events
     let events = e.events().all();
@@ -104,6 +104,8 @@ fn test_propose_calldata() {
         title.into_val(&e),
         description.into_val(&e),
         action.try_into_val(&e).unwrap(),
+        proposal.data.vote_start.into_val(&e),
+        proposal.data.vote_end.into_val(&e),
     ];
     assert_eq!(
         tx_events,
@@ -148,7 +150,7 @@ fn test_propose_with_active_proposal() {
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
     assert_eq!(proposal.id, 0);
     assert_eq!(proposal.data.creator, samwise);
-    assert_eq!(proposal.data.status, ProposalStatus::Pending);
+    assert_eq!(proposal.data.status, ProposalStatus::Open);
 
     e.jump(settings.vote_delay + 1);
 
@@ -191,7 +193,7 @@ fn test_propose_snapshot() {
         proposal.data.vote_end,
         e.ledger().sequence() + settings.vote_period
     );
-    assert_eq!(proposal.data.status, ProposalStatus::Pending);
+    assert_eq!(proposal.data.status, ProposalStatus::Open);
 }
 
 #[test]

@@ -198,14 +198,14 @@ pub fn set_proposal_data(e: &Env, id: &u32, proposal_status: &ProposalData) {
         .extend_ttl(&key, LEDGER_BUMP_PROPOSAL, LEDGER_BUMP_PROPOSAL);
 }
 
-/// Check if an active proposal exists created by `address`
-pub fn has_active_proposal(e: &Env, address: &Address) -> bool {
+/// Check if an open proposal exists created by `address`
+pub fn has_open_proposal(e: &Env, address: &Address) -> bool {
     let key = GovernorDataKey::Active(address.clone());
     e.storage().temporary().has(&key)
 }
 
-/// Set the active proposal flag for `address`
-pub fn set_active_proposal(e: &Env, address: &Address) {
+/// Set the open proposal flag for `address`
+pub fn set_open_proposal(e: &Env, address: &Address) {
     let key = GovernorDataKey::Active(address.clone());
     e.storage().temporary().set(&key, &true);
     e.storage()
@@ -213,8 +213,8 @@ pub fn set_active_proposal(e: &Env, address: &Address) {
         .extend_ttl(&key, LEDGER_BUMP_PROPOSAL, LEDGER_BUMP_PROPOSAL);
 }
 
-/// Remove the active proposal flag for `address`
-pub fn del_active_proposal(e: &Env, address: &Address) {
+/// Remove the open proposal flag for `address`
+pub fn del_open_proposal(e: &Env, address: &Address) {
     let key = GovernorDataKey::Active(address.clone());
     e.storage().temporary().remove(&key);
 }

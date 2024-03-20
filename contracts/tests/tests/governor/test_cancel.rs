@@ -67,12 +67,7 @@ fn test_cancel() {
             &e,
             (
                 governor_address.clone(),
-                (
-                    Symbol::new(&e, "proposal_updated"),
-                    proposal_id,
-                    ProposalStatus::Canceled as u32
-                )
-                    .into_val(&e),
+                (Symbol::new(&e, "proposal_canceled"), proposal_id).into_val(&e),
                 ().into_val(&e)
             )
         ]
@@ -139,12 +134,7 @@ fn test_cancel_council() {
             &e,
             (
                 governor_address.clone(),
-                (
-                    Symbol::new(&e, "proposal_updated"),
-                    proposal_id,
-                    ProposalStatus::Canceled as u32
-                )
-                    .into_val(&e),
+                (Symbol::new(&e, "proposal_canceled"), proposal_id,).into_val(&e),
                 ().into_val(&e)
             )
         ]
