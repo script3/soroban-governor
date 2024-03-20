@@ -129,7 +129,7 @@ fn test_wasm_happy_path() {
     governor_client.vote(&merry, &proposal_id, &2);
     e.jump(ONE_HOUR);
 
-    let proposal_votes = governor_client.get_proposal_votes(&proposal_id);
+    let proposal_votes = governor_client.get_proposal_votes(&proposal_id).unwrap();
     assert_eq!(proposal_votes.against, pippin_votes);
     assert_eq!(proposal_votes._for, frodo_votes);
     assert_eq!(proposal_votes.abstain, merry_votes);
@@ -264,7 +264,7 @@ fn test_wasm_happy_path_soroban_token() {
     governor_client.vote(&merry, &proposal_id, &2);
     e.jump(ONE_HOUR);
 
-    let proposal_votes = governor_client.get_proposal_votes(&proposal_id);
+    let proposal_votes = governor_client.get_proposal_votes(&proposal_id).unwrap();
     assert_eq!(proposal_votes.against, pippin_votes);
     assert_eq!(proposal_votes._for, frodo_votes);
     assert_eq!(proposal_votes.abstain, merry_votes);

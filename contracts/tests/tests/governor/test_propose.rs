@@ -93,8 +93,14 @@ fn test_propose_calldata() {
         proposal.data.vote_end,
         settings.vote_delay + settings.vote_period
     );
-
     assert_eq!(proposal.data.status, ProposalStatus::Open);
+
+    let votes = governor_client.get_proposal_votes(&proposal_id);
+    assert!(votes.is_some());
+    let votes = votes.unwrap();
+    assert_eq!(votes.against, 0);
+    assert_eq!(votes._for, 0);
+    assert_eq!(votes.abstain, 0);
 
     // verify events
     let events = e.events().all();

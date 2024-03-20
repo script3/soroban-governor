@@ -71,7 +71,7 @@ fn test_vote() {
     assert_eq!(votes, Some(voter_support));
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
     assert_eq!(proposal.data.status, ProposalStatus::Open);
-    let vote_count = governor_client.get_proposal_votes(&proposal_id);
+    let vote_count = governor_client.get_proposal_votes(&proposal_id).unwrap();
     assert_eq!(vote_count.against, samwise_votes);
     assert_eq!(vote_count._for, 0);
     assert_eq!(vote_count.abstain, 0);
@@ -131,7 +131,7 @@ fn test_vote_user_changes_support() {
     assert_eq!(votes, Some(voter_support));
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
     assert_eq!(proposal.data.status, ProposalStatus::Open);
-    let vote_count = governor_client.get_proposal_votes(&proposal_id);
+    let vote_count = governor_client.get_proposal_votes(&proposal_id).unwrap();
     assert_eq!(vote_count.against, samwise_votes);
     assert_eq!(vote_count._for, 0);
     assert_eq!(vote_count.abstain, 0);
@@ -197,7 +197,7 @@ fn test_vote_multiple_users() {
     assert_eq!(votes, Some(2));
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
     assert_eq!(proposal.data.status, ProposalStatus::Open);
-    let vote_count = governor_client.get_proposal_votes(&proposal_id);
+    let vote_count = governor_client.get_proposal_votes(&proposal_id).unwrap();
     assert_eq!(vote_count.against, pippin_votes + merry_votes);
     assert_eq!(vote_count._for, samwise_votes);
     assert_eq!(vote_count.abstain, bilbo_votes);

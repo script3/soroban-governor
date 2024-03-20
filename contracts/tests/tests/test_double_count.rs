@@ -123,7 +123,7 @@ fn test_double_count() {
     governor_client.vote(&pippin, &proposal_id, &0);
 
     // verify proposal votes
-    let proposal_votes = governor_client.get_proposal_votes(&proposal_id);
+    let proposal_votes = governor_client.get_proposal_votes(&proposal_id).unwrap();
     assert_eq!(proposal_votes.against, pippin_votes * 2);
     assert_eq!(
         proposal_votes._for,
