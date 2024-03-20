@@ -21,7 +21,7 @@ pub fn require_valid_settings(e: &Env, settings: &GovernorSettings) {
     if settings.vote_period > MAX_VOTE_PERIOD {
         panic_with_error!(&e, GovernorError::InvalidSettingsError)
     }
-    if settings.vote_delay + settings.vote_period + settings.timelock + settings.grace_period
+    if settings.vote_delay + settings.vote_period + settings.timelock + settings.grace_period * 2
         > MAX_PROPOSAL_LIFETIME
     {
         panic_with_error!(&e, GovernorError::InvalidSettingsError)
@@ -63,6 +63,25 @@ mod tests {
     }
 
     #[test]
+    fn test_require_valid_settings_is_valid_at_max() {
+        let e = Env::default();
+        let settings = GovernorSettings {
+            council: Address::generate(&e),
+            proposal_threshold: 1_0000000,
+            vote_delay: ONE_DAY_LEDGERS * 3,
+            vote_period: ONE_DAY_LEDGERS * 7,
+            timelock: ONE_DAY_LEDGERS * 7,
+            grace_period: ONE_DAY_LEDGERS * 7,
+            quorum: 100,
+            counting_type: 2,
+            vote_threshold: 5100,
+        };
+
+        require_valid_settings(&e, &settings);
+        assert!(true);
+    }
+
+    #[test]
     #[should_panic(expected = "Error(Contract, #200)")]
     fn test_require_valid_settings_invalid_vote_period() {
         let e = Env::default();
@@ -91,7 +110,7 @@ mod tests {
             vote_delay: ONE_DAY_LEDGERS * 3 + 1,
             vote_period: ONE_DAY_LEDGERS * 7,
             timelock: ONE_DAY_LEDGERS * 7,
-            grace_period: ONE_DAY_LEDGERS * 14,
+            grace_period: ONE_DAY_LEDGERS * 7,
             quorum: 100,
             counting_type: 2,
             vote_threshold: 5100,

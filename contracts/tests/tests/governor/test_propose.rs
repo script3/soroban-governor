@@ -338,10 +338,10 @@ fn test_propose_settings_validates() {
 
     let (title, description, _) = default_proposal_data(&e);
     let mut new_settings = settings.clone();
-    new_settings.vote_delay = 4 * 17280;
+    new_settings.vote_delay = 5 * 17280;
     new_settings.vote_period = 5 * 17280;
     new_settings.timelock = 7 * 17280;
-    new_settings.grace_period = 15 * 17280 + 1;
+    new_settings.grace_period = 7 * 17280 + 1;
     let action = ProposalAction::Settings(new_settings.clone());
 
     governor_client.propose(&samwise, &title, &description, &action);

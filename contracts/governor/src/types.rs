@@ -125,7 +125,7 @@ pub enum ProposalStatus {
     Successful = 1,
     /// The proposal was voted against
     Defeated = 2,
-    /// The proposal did not reach quorum before the voting period ended
+    /// The proposal did not reach quorum before the voting period ended, or was stalled out during the grace period.
     Expired = 3,
     /// The proposal has been executed
     Executed = 4,

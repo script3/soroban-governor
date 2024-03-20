@@ -120,22 +120,32 @@ impl Governor for GovernorContract {
         }
 
         let settings = storage::get_settings(&e);
-        let votes_client = VotesClient::new(&e, &storage::get_voter_token_address(&e));
-        let total_vote_supply = votes_client.get_past_total_supply(&proposal_data.vote_start);
-
         let vote_count = storage::get_proposal_vote_count(&e, proposal_id).unwrap_optimized();
-        let passed_quorum =
-            vote_count.is_over_quorum(settings.quorum, settings.counting_type, total_vote_supply);
-        let passed_vote_threshold = vote_count.is_over_threshold(settings.vote_threshold);
-
-        if passed_vote_threshold && passed_quorum {
-            proposal_data.status = ProposalStatus::Successful;
-            if proposal_data.executable {
-                proposal_data.eta = e.ledger().sequence() + settings.timelock;
-            }
+        if e.ledger().sequence() > proposal_data.vote_end + settings.grace_period {
+            // proposal took too long to be closed. Mark expired and close.
+            proposal_data.status = ProposalStatus::Expired;
         } else {
-            proposal_data.status = ProposalStatus::Defeated;
+            // proposal closed in time. Check if it passed or failed.
+            let votes_client = VotesClient::new(&e, &storage::get_voter_token_address(&e));
+            let total_vote_supply = votes_client.get_past_total_supply(&proposal_data.vote_start);
+
+            let passed_quorum = vote_count.is_over_quorum(
+                settings.quorum,
+                settings.counting_type,
+                total_vote_supply,
+            );
+            let passed_vote_threshold = vote_count.is_over_threshold(settings.vote_threshold);
+
+            if passed_vote_threshold && passed_quorum {
+                proposal_data.status = ProposalStatus::Successful;
+                if proposal_data.executable {
+                    proposal_data.eta = e.ledger().sequence() + settings.timelock;
+                }
+            } else {
+                proposal_data.status = ProposalStatus::Defeated;
+            }
         }
+
         storage::set_proposal_data(&e, proposal_id, &proposal_data);
         storage::del_open_proposal(&e, &proposal_data.creator);
         GovernorEvents::proposal_voting_closed(

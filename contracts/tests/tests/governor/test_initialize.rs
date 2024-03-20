@@ -66,7 +66,7 @@ fn test_initialize_proposal_exceeds_max_lifetime() {
     settings.vote_delay = 4 * 17280;
     settings.vote_period = 5 * 17280;
     settings.timelock = 7 * 17280;
-    settings.grace_period = 15 * 17280 + 1;
+    settings.grace_period = 7 * 17280 + 1;
 
     govenor.initialize(&votes, &settings);
 }
