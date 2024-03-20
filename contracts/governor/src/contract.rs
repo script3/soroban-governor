@@ -3,11 +3,11 @@ use soroban_sdk::{
 };
 
 use crate::{
-    constants::{MAX_PROPOSAL_LIFETIME, MAX_VOTE_PERIOD},
     dependencies::VotesClient,
     errors::GovernorError,
     events::GovernorEvents,
     governor::Governor,
+    settings::require_valid_settings,
     storage,
     types::{
         GovernorSettings, Proposal, ProposalAction, ProposalConfig, ProposalData, ProposalStatus,
@@ -24,15 +24,9 @@ impl Governor for GovernorContract {
         if storage::get_is_init(&e) {
             panic_with_error!(&e, GovernorError::AlreadyInitializedError);
         }
-        if settings.vote_period > MAX_VOTE_PERIOD {
-            panic_with_error!(&e, GovernorError::InvalidSettingsError)
-        }
-        if settings.vote_delay + settings.vote_period + settings.timelock > MAX_PROPOSAL_LIFETIME {
-            panic_with_error!(&e, GovernorError::InvalidSettingsError)
-        }
-
-        storage::set_voter_token_address(&e, &votes);
+        require_valid_settings(&e, &settings);
         storage::set_settings(&e, &settings);
+        storage::set_voter_token_address(&e, &votes);
         storage::set_is_init(&e);
         storage::extend_instance(&e);
     }
@@ -62,6 +56,8 @@ impl Governor for GovernorContract {
             panic_with_error!(&e, GovernorError::InsufficientVotingUnitsError)
         }
 
+        let proposal_config =
+            ProposalConfig::new(&e, title.clone(), description.clone(), action.clone());
         let proposal_id = storage::get_next_proposal_id(&e);
         let vote_start = match action {
             // no vote delay for snapshot proposals as they cannot be executed
@@ -70,11 +66,6 @@ impl Governor for GovernorContract {
             _ => e.ledger().sequence() + settings.vote_delay,
         };
         let vote_end = vote_start + settings.vote_period;
-        let proposal_config = ProposalConfig {
-            title: title.clone(),
-            description: description.clone(),
-            action: action.clone(),
-        };
         let proposal_data = ProposalData {
             creator: creator.clone(),
             vote_start,

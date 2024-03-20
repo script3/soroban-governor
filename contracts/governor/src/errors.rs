@@ -28,4 +28,5 @@ pub enum GovernorError {
     InvalidProposalType = 210,
     ProposalAlreadyOpenError = 211,
     OutsideOfVotePeriodError = 212,
+    InvalidProposalActionError = 213,
 }
