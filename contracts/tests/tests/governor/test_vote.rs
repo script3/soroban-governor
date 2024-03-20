@@ -70,8 +70,8 @@ fn test_vote() {
     let votes = governor_client.get_vote(&samwise, &proposal_id);
     assert_eq!(votes, Some(voter_support));
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
-    assert_eq!(proposal.data.status, ProposalStatus::Active);
-    let vote_count = governor_client.get_proposal_votes(&proposal_id);
+    assert_eq!(proposal.data.status, ProposalStatus::Open);
+    let vote_count = governor_client.get_proposal_votes(&proposal_id).unwrap();
     assert_eq!(vote_count.against, samwise_votes);
     assert_eq!(vote_count._for, 0);
     assert_eq!(vote_count.abstain, 0);
@@ -130,8 +130,8 @@ fn test_vote_user_changes_support() {
     let votes = governor_client.get_vote(&samwise, &proposal_id);
     assert_eq!(votes, Some(voter_support));
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
-    assert_eq!(proposal.data.status, ProposalStatus::Active);
-    let vote_count = governor_client.get_proposal_votes(&proposal_id);
+    assert_eq!(proposal.data.status, ProposalStatus::Open);
+    let vote_count = governor_client.get_proposal_votes(&proposal_id).unwrap();
     assert_eq!(vote_count.against, samwise_votes);
     assert_eq!(vote_count._for, 0);
     assert_eq!(vote_count.abstain, 0);
@@ -196,8 +196,8 @@ fn test_vote_multiple_users() {
     let votes = governor_client.get_vote(&bilbo, &proposal_id);
     assert_eq!(votes, Some(2));
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
-    assert_eq!(proposal.data.status, ProposalStatus::Active);
-    let vote_count = governor_client.get_proposal_votes(&proposal_id);
+    assert_eq!(proposal.data.status, ProposalStatus::Open);
+    let vote_count = governor_client.get_proposal_votes(&proposal_id).unwrap();
     assert_eq!(vote_count.against, pippin_votes + merry_votes);
     assert_eq!(vote_count._for, samwise_votes);
     assert_eq!(vote_count.abstain, bilbo_votes);
@@ -232,7 +232,7 @@ fn test_vote_nonexistent_proposal() {
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #202)")]
+#[should_panic(expected = "Error(Contract, #212)")]
 fn test_vote_delay_not_ended() {
     let e = Env::default();
     e.set_default_info();
@@ -260,6 +260,40 @@ fn test_vote_delay_not_ended() {
     // setup a proposal that can be voted on
     let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay - 1);
+
+    governor_client.vote(&samwise, &proposal_id, &1);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #212)")]
+fn test_vote_period_ended() {
+    let e = Env::default();
+    e.set_default_info();
+    e.mock_all_auths();
+
+    let bombadil = Address::generate(&e);
+    let frodo = Address::generate(&e);
+    let samwise = Address::generate(&e);
+    let settings = default_governor_settings(&e);
+    let (governor_address, token_address, votes_address) =
+        create_governor(&e, &bombadil, &settings);
+    let token_client = MockTokenClient::new(&e, &token_address);
+    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let governor_client = GovernorContractClient::new(&e, &governor_address);
+
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    token_client.mint(&frodo, &total_votes);
+    votes_client.deposit_for(&frodo, &total_votes);
+
+    let samwise_votes = 8_000 * 10i128.pow(7);
+    votes_client.transfer(&frodo, &samwise, &samwise_votes);
+
+    let (title, description, action) = default_proposal_data(&e);
+
+    // setup a proposal that can be voted on
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
+    e.jump(settings.vote_delay);
+    e.jump(settings.vote_period + 1);
 
     governor_client.vote(&samwise, &proposal_id, &1);
 }

@@ -1,7 +1,7 @@
 use sep_41_token::testutils::MockTokenClient;
-use soroban_governor::GovernorContractClient;
 #[cfg(test)]
 use soroban_governor::{storage, types::ProposalStatus};
+use soroban_governor::{types::ProposalAction, GovernorContractClient};
 use soroban_sdk::{
     testutils::{Address as _, Events},
     vec, Address, Env, IntoVal, Symbol,
@@ -13,7 +13,7 @@ use tests::{
 };
 
 #[test]
-fn test_close_proposal_queued() {
+fn test_close_successful() {
     let e = Env::default();
     e.set_default_info();
     e.mock_all_auths();
@@ -46,7 +46,7 @@ fn test_close_proposal_queued() {
     e.jump(settings.vote_delay + 1);
     governor_client.vote(&samwise, &proposal_id, &1);
     governor_client.vote(&pippin, &proposal_id, &0);
-    e.jump(settings.vote_period - 1);
+    e.jump(settings.vote_period);
 
     governor_client.close(&proposal_id);
 
@@ -56,8 +56,10 @@ fn test_close_proposal_queued() {
     // verify chain results
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
     assert_eq!(proposal.data.status, ProposalStatus::Successful);
+    assert_eq!(proposal.data.eta, e.ledger().sequence() + settings.timelock);
 
     // verify events
+    let proposal_votes = governor_client.get_proposal_votes(&proposal_id);
     let events = e.events().all();
     let tx_events = vec![&e, events.last().unwrap()];
     assert_eq!(
@@ -67,12 +69,13 @@ fn test_close_proposal_queued() {
             (
                 governor_address.clone(),
                 (
-                    Symbol::new(&e, "proposal_updated"),
+                    Symbol::new(&e, "proposal_voting_closed"),
                     proposal_id,
-                    ProposalStatus::Successful as u32
+                    ProposalStatus::Successful as u32,
+                    e.ledger().sequence() + settings.timelock
                 )
                     .into_val(&e),
-                ().into_val(&e)
+                proposal_votes.into_val(&e)
             )
         ]
     );
@@ -83,7 +86,7 @@ fn test_close_proposal_queued() {
 }
 
 #[test]
-fn test_close_quorum_not_met() {
+fn test_close_defeated_quorum_not_met() {
     let e = Env::default();
     e.set_default_info();
     e.mock_all_auths();
@@ -116,15 +119,17 @@ fn test_close_quorum_not_met() {
     e.jump(settings.vote_delay + 1);
     governor_client.vote(&samwise, &proposal_id, &1);
     governor_client.vote(&pippin, &proposal_id, &0);
-    e.jump(settings.vote_period - 1);
+    e.jump(settings.vote_period);
 
     governor_client.close(&proposal_id);
 
     // verify chain results
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
     assert_eq!(proposal.data.status, ProposalStatus::Defeated);
+    assert_eq!(proposal.data.eta, 0);
 
     // verify events
+    let proposal_votes = governor_client.get_proposal_votes(&proposal_id);
     let events = e.events().all();
     let tx_events = vec![&e, events.last().unwrap()];
     assert_eq!(
@@ -134,12 +139,13 @@ fn test_close_quorum_not_met() {
             (
                 governor_address.clone(),
                 (
-                    Symbol::new(&e, "proposal_updated"),
+                    Symbol::new(&e, "proposal_voting_closed"),
                     proposal_id,
-                    ProposalStatus::Defeated as u32
+                    ProposalStatus::Defeated as u32,
+                    0 as u32
                 )
                     .into_val(&e),
-                ().into_val(&e)
+                proposal_votes.into_val(&e)
             )
         ]
     );
@@ -150,7 +156,7 @@ fn test_close_quorum_not_met() {
 }
 
 #[test]
-fn test_close_vote_threshold_not_met() {
+fn test_close_defeated_threshold_not_met() {
     let e = Env::default();
     e.set_default_info();
     e.mock_all_auths();
@@ -182,15 +188,17 @@ fn test_close_vote_threshold_not_met() {
     e.jump(settings.vote_delay + 1);
     governor_client.vote(&samwise, &proposal_id, &1);
     governor_client.vote(&pippin, &proposal_id, &0);
-    e.jump(settings.vote_period - 1);
+    e.jump(settings.vote_period);
 
     governor_client.close(&proposal_id);
 
     // verify chain results
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
     assert_eq!(proposal.data.status, ProposalStatus::Defeated);
+    assert_eq!(proposal.data.eta, 0);
 
     // verify events
+    let proposal_votes = governor_client.get_proposal_votes(&proposal_id);
     let events = e.events().all();
     let tx_events = vec![&e, events.last().unwrap()];
     assert_eq!(
@@ -200,12 +208,85 @@ fn test_close_vote_threshold_not_met() {
             (
                 governor_address.clone(),
                 (
-                    Symbol::new(&e, "proposal_updated"),
+                    Symbol::new(&e, "proposal_voting_closed"),
                     proposal_id,
-                    ProposalStatus::Defeated as u32
+                    ProposalStatus::Defeated as u32,
+                    0 as u32
                 )
                     .into_val(&e),
-                ().into_val(&e)
+                proposal_votes.into_val(&e)
+            )
+        ]
+    );
+
+    // verify creator can create another proposal
+    let proposal_id_new = governor_client.propose(&samwise, &title, &description, &action);
+    assert_eq!(proposal_id_new, proposal_id + 1);
+}
+
+#[test]
+fn test_close_expired() {
+    let e = Env::default();
+    e.set_default_info();
+    e.mock_all_auths();
+
+    let bombadil = Address::generate(&e);
+    let frodo = Address::generate(&e);
+    let samwise = Address::generate(&e);
+    let pippin = Address::generate(&e);
+
+    let settings = default_governor_settings(&e);
+    let (governor_address, token_address, votes_address) =
+        create_governor(&e, &bombadil, &settings);
+    let token_client = MockTokenClient::new(&e, &token_address);
+    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let governor_client = GovernorContractClient::new(&e, &governor_address);
+
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    token_client.mint(&frodo, &total_votes);
+    votes_client.deposit_for(&frodo, &total_votes);
+
+    let samwise_votes = 105 * 10i128.pow(7);
+    votes_client.transfer(&frodo, &samwise, &samwise_votes);
+
+    let pippin_votes = 100 * 10i128.pow(7);
+    votes_client.transfer(&frodo, &pippin, &pippin_votes);
+
+    let (title, description, action) = default_proposal_data(&e);
+
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
+    e.jump(settings.vote_delay + 1);
+    governor_client.vote(&samwise, &proposal_id, &1);
+    governor_client.vote(&pippin, &proposal_id, &0);
+    e.jump(settings.vote_period);
+
+    e.jump(settings.grace_period + 1);
+
+    governor_client.close(&proposal_id);
+
+    // verify chain results
+    let proposal = governor_client.get_proposal(&proposal_id).unwrap();
+    assert_eq!(proposal.data.status, ProposalStatus::Expired);
+    assert_eq!(proposal.data.eta, 0);
+
+    // verify events
+    let proposal_votes = governor_client.get_proposal_votes(&proposal_id);
+    let events = e.events().all();
+    let tx_events = vec![&e, events.last().unwrap()];
+    assert_eq!(
+        tx_events,
+        vec![
+            &e,
+            (
+                governor_address.clone(),
+                (
+                    Symbol::new(&e, "proposal_voting_closed"),
+                    proposal_id,
+                    ProposalStatus::Expired as u32,
+                    0 as u32
+                )
+                    .into_val(&e),
+                proposal_votes.into_val(&e)
             )
         ]
     );
@@ -262,10 +343,52 @@ fn test_close_tracks_quorum_with_counting_type() {
     // verify chain results
     let proposal = governor_client.get_proposal(&proposal_id).unwrap();
     assert_eq!(proposal.data.status, ProposalStatus::Successful);
+    assert_eq!(proposal.data.eta, e.ledger().sequence() + settings.timelock);
+}
 
-    // verify creator can create another proposal
-    let proposal_id_new = governor_client.propose(&samwise, &title, &description, &action);
-    assert_eq!(proposal_id_new, proposal_id + 1);
+#[test]
+fn test_close_successful_non_executable() {
+    let e = Env::default();
+    e.set_default_info();
+    e.mock_all_auths();
+
+    let bombadil = Address::generate(&e);
+    let frodo = Address::generate(&e);
+    let samwise = Address::generate(&e);
+    let pippin = Address::generate(&e);
+
+    let settings = default_governor_settings(&e);
+    let (governor_address, token_address, votes_address) =
+        create_governor(&e, &bombadil, &settings);
+    let token_client = MockTokenClient::new(&e, &token_address);
+    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let governor_client = GovernorContractClient::new(&e, &governor_address);
+
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    token_client.mint(&frodo, &total_votes);
+    votes_client.deposit_for(&frodo, &total_votes);
+
+    let samwise_votes = 105 * 10i128.pow(7);
+    votes_client.transfer(&frodo, &samwise, &samwise_votes);
+
+    let pippin_votes = 100 * 10i128.pow(7);
+    votes_client.transfer(&frodo, &pippin, &pippin_votes);
+
+    let (title, description, _) = default_proposal_data(&e);
+    let action = ProposalAction::Snapshot;
+
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
+    e.jump(settings.vote_delay + 1);
+    governor_client.vote(&samwise, &proposal_id, &1);
+    governor_client.vote(&pippin, &proposal_id, &0);
+    e.jump(settings.vote_period);
+
+    governor_client.close(&proposal_id);
+
+    // verify chain results
+    let proposal = governor_client.get_proposal(&proposal_id).unwrap();
+    assert_eq!(proposal.data.status, ProposalStatus::Successful);
+    assert_eq!(proposal.data.eta, 0);
 }
 
 #[test]
@@ -319,7 +442,7 @@ fn test_close_vote_period_unfinished() {
     let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay + 1);
     governor_client.vote(&samwise, &proposal_id, &1);
-    e.jump(settings.vote_period - 2);
+    e.jump(settings.vote_period - 1);
 
     governor_client.close(&proposal_id);
 }

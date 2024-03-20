@@ -67,16 +67,15 @@ fn test_cancel() {
             &e,
             (
                 governor_address.clone(),
-                (
-                    Symbol::new(&e, "proposal_updated"),
-                    proposal_id,
-                    ProposalStatus::Canceled as u32
-                )
-                    .into_val(&e),
+                (Symbol::new(&e, "proposal_canceled"), proposal_id).into_val(&e),
                 ().into_val(&e)
             )
         ]
     );
+
+    // verify creator can create another proposal
+    let proposal_id_new = governor_client.propose(&samwise, &title, &description, &action);
+    assert_eq!(proposal_id_new, proposal_id + 1);
 }
 
 #[test]
@@ -139,16 +138,15 @@ fn test_cancel_council() {
             &e,
             (
                 governor_address.clone(),
-                (
-                    Symbol::new(&e, "proposal_updated"),
-                    proposal_id,
-                    ProposalStatus::Canceled as u32
-                )
-                    .into_val(&e),
+                (Symbol::new(&e, "proposal_canceled"), proposal_id,).into_val(&e),
                 ().into_val(&e)
             )
         ]
     );
+
+    // verify creator can create another proposal
+    let proposal_id_new = governor_client.propose(&samwise, &title, &description, &action);
+    assert_eq!(proposal_id_new, proposal_id + 1);
 }
 
 #[test]

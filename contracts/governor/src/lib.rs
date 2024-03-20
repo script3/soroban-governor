@@ -10,6 +10,7 @@ pub mod errors;
 pub mod events;
 pub mod governor;
 pub mod proposal_config;
+pub mod settings;
 pub mod storage;
 pub mod types;
 pub mod vote_count;

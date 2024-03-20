@@ -1,15 +1,41 @@
 use soroban_sdk::{
     auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation},
-    panic_with_error, vec, Env, Val, Vec,
+    panic_with_error, vec, Env, String, Val, Vec,
 };
 
 use crate::{
     errors::GovernorError,
+    settings::require_valid_settings,
     storage,
     types::{Calldata, ProposalAction, ProposalConfig},
 };
 
 impl ProposalConfig {
+    /// Creates a new proposal configuration and performs light validation on the action
+    pub fn new(
+        e: &Env,
+        title: String,
+        description: String,
+        action: ProposalAction,
+    ) -> ProposalConfig {
+        match action {
+            ProposalAction::Calldata(ref calldata) => {
+                if calldata.contract_id == e.current_contract_address() {
+                    panic_with_error!(e, GovernorError::InvalidProposalActionError);
+                }
+            }
+            ProposalAction::Settings(ref settings) => require_valid_settings(e, settings),
+            ProposalAction::Upgrade(_) => (),
+            ProposalAction::Snapshot => (),
+        }
+
+        ProposalConfig {
+            title,
+            description,
+            action,
+        }
+    }
+
     /// Execute the proposal based on the configuration
     pub fn execute(&self, e: &Env) {
         match self.action {
