@@ -3,14 +3,14 @@ use soroban_sdk::{
     TryFromVal, Val, Vec,
 };
 
+use crate::constants::{MAX_CHECKPOINT_AGE_LEDGERS, MAX_PROPOSAL_AGE_LEDGERS};
+
 pub(crate) const DAY_IN_LEDGERS: u32 = 17280;
-pub(crate) const INSTANCE_BUMP_AMOUNT: u32 = 8 * DAY_IN_LEDGERS;
+pub(crate) const INSTANCE_BUMP_AMOUNT: u32 = 31 * DAY_IN_LEDGERS;
 pub(crate) const INSTANCE_LIFETIME_THRESHOLD: u32 = INSTANCE_BUMP_AMOUNT - DAY_IN_LEDGERS;
 
-pub(crate) const MAX_VOTE_CHECKPOINT_LEDGERS: u32 = INSTANCE_BUMP_AMOUNT;
-
-pub(crate) const BALANCE_BUMP_AMOUNT: u32 = 31 * DAY_IN_LEDGERS - 1;
-pub(crate) const BALANCE_LIFETIME_THRESHOLD: u32 = BALANCE_BUMP_AMOUNT - DAY_IN_LEDGERS;
+pub(crate) const BALANCE_BUMP_AMOUNT: u32 = 120 * DAY_IN_LEDGERS;
+pub(crate) const BALANCE_LIFETIME_THRESHOLD: u32 = BALANCE_BUMP_AMOUNT - 10 * DAY_IN_LEDGERS;
 
 //********** Storage Keys **********//
 
@@ -329,11 +329,12 @@ pub fn get_vote_ledgers(e: &Env) -> Vec<u32> {
 
 pub fn set_vote_ledgers(e: &Env, vote_ledgers: &Vec<u32>) {
     e.storage().temporary().set(&VOTE_LEDGERS_KEY, vote_ledgers);
-    // extend for twice the time a vote period can last
+    // extend for at least the max proposal age to ensure the voting period has closed
+    // before the vote ledger is removed
     e.storage().temporary().extend_ttl(
         &VOTE_LEDGERS_KEY,
-        MAX_VOTE_CHECKPOINT_LEDGERS * 2,
-        MAX_VOTE_CHECKPOINT_LEDGERS * 2,
+        MAX_PROPOSAL_AGE_LEDGERS,
+        MAX_PROPOSAL_AGE_LEDGERS,
     );
 }
 
@@ -352,8 +353,8 @@ pub fn set_total_supply_checkpoints(e: &Env, balance: &Vec<u128>) {
     // TTL is 8 days of ledgers, providing some wiggle room for fast ledgers.
     e.storage().temporary().extend_ttl(
         &TOTAL_SUPPLY_CHECK_KEY,
-        MAX_VOTE_CHECKPOINT_LEDGERS,
-        MAX_VOTE_CHECKPOINT_LEDGERS,
+        MAX_CHECKPOINT_AGE_LEDGERS,
+        MAX_CHECKPOINT_AGE_LEDGERS,
     );
 }
 
@@ -371,8 +372,8 @@ pub fn set_voting_units_checkpoints(e: &Env, address: &Address, balance: &Vec<u1
     // Instance bump amount is 8 days, providing some wiggle room for fast ledgers.
     e.storage().temporary().extend_ttl(
         &key,
-        MAX_VOTE_CHECKPOINT_LEDGERS,
-        MAX_VOTE_CHECKPOINT_LEDGERS,
+        MAX_CHECKPOINT_AGE_LEDGERS,
+        MAX_CHECKPOINT_AGE_LEDGERS,
     );
 }
 
