@@ -9,6 +9,10 @@ mod checkpoints;
 mod constants;
 mod contract;
 mod error;
+
+#[cfg(feature = "emissions")]
+mod emissions;
+
 mod events;
 mod storage;
 mod validation;

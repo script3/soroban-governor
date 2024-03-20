@@ -26,6 +26,10 @@ const ADMIN_KEY: Symbol = symbol_short!("ADMIN");
 
 #[cfg(feature = "wrapped")]
 const TOKEN_KEY: Symbol = symbol_short!("TOKEN");
+#[cfg(feature = "emissions")]
+const EMIS_CONFIG: Symbol = symbol_short!("EMIS_CFG");
+#[cfg(feature = "emissions")]
+const EMIS_DATA: Symbol = symbol_short!("EMIS_DATA");
 
 #[derive(Clone)]
 #[contracttype]
@@ -50,6 +54,11 @@ pub enum DataKey {
     Delegate(Address),
 }
 
+#[cfg(feature = "emissions")]
+#[derive(Clone)]
+#[contracttype]
+pub struct EmisKey(Address);
+
 //********** Storage Types **********//
 
 #[derive(Clone)]
@@ -58,6 +67,33 @@ pub struct TokenMetadata {
     pub decimal: u32,
     pub name: String,
     pub symbol: String,
+}
+
+#[cfg(feature = "emissions")]
+// The emission configuration
+#[derive(Clone)]
+#[contracttype]
+pub struct EmissionConfig {
+    pub expiration: u64,
+    pub eps: u64,
+}
+
+#[cfg(feature = "emissions")]
+// The emission data
+#[derive(Clone)]
+#[contracttype]
+pub struct EmissionData {
+    pub index: i128,
+    pub last_time: u64,
+}
+
+#[cfg(feature = "emissions")]
+// The emission data for a user
+#[derive(Clone)]
+#[contracttype]
+pub struct UserEmissionData {
+    pub index: i128,
+    pub accrued: i128,
 }
 
 //********** Storage Utils **********//
@@ -338,4 +374,74 @@ pub fn set_voting_units_checkpoints(e: &Env, address: &Address, balance: &Vec<u1
         MAX_VOTE_CHECKPOINT_LEDGERS,
         MAX_VOTE_CHECKPOINT_LEDGERS,
     );
+}
+
+// ********** Emissions **********
+
+// Emission config
+
+#[cfg(feature = "emissions")]
+pub fn get_emission_config(e: &Env) -> Option<EmissionConfig> {
+    get_persistent_default(
+        e,
+        &EMIS_CONFIG,
+        || None,
+        BALANCE_LIFETIME_THRESHOLD,
+        BALANCE_BUMP_AMOUNT,
+    )
+}
+
+#[cfg(feature = "emissions")]
+pub fn set_emission_config(e: &Env, config: &EmissionConfig) {
+    e.storage().persistent().set(&EMIS_CONFIG, config);
+    e.storage().persistent().extend_ttl(
+        &EMIS_CONFIG,
+        BALANCE_LIFETIME_THRESHOLD,
+        BALANCE_BUMP_AMOUNT,
+    );
+}
+
+// Emission data
+
+#[cfg(feature = "emissions")]
+pub fn get_emission_data(e: &Env) -> Option<EmissionData> {
+    get_persistent_default(
+        e,
+        &EMIS_DATA,
+        || None,
+        BALANCE_LIFETIME_THRESHOLD,
+        BALANCE_BUMP_AMOUNT,
+    )
+}
+
+#[cfg(feature = "emissions")]
+pub fn set_emission_data(e: &Env, config: &EmissionData) {
+    e.storage().persistent().set(&EMIS_DATA, config);
+    e.storage().persistent().extend_ttl(
+        &EMIS_DATA,
+        BALANCE_LIFETIME_THRESHOLD,
+        BALANCE_BUMP_AMOUNT,
+    );
+}
+
+// User emission data
+
+#[cfg(feature = "emissions")]
+pub fn get_user_emission_data(e: &Env, user: &Address) -> Option<UserEmissionData> {
+    get_persistent_default(
+        e,
+        &EmisKey(user.clone()),
+        || None,
+        BALANCE_LIFETIME_THRESHOLD,
+        BALANCE_BUMP_AMOUNT,
+    )
+}
+
+#[cfg(feature = "emissions")]
+pub fn set_user_emission_data(e: &Env, user: &Address, data: &UserEmissionData) {
+    let key = EmisKey(user.clone());
+    e.storage().persistent().set(&key, data);
+    e.storage()
+        .persistent()
+        .extend_ttl(&key, BALANCE_LIFETIME_THRESHOLD, BALANCE_BUMP_AMOUNT);
 }

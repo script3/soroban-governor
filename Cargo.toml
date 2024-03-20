@@ -27,3 +27,6 @@ version = "20.3.2"
 
 [workspace.dependencies.sep-41-token]
 version = "0.3.0"
+
+[workspace.dependencies.soroban-fixed-point-math]
+version = "1.0.0"

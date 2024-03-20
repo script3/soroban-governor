@@ -119,3 +119,22 @@ pub trait SorobanOnly {
         symbol: String,
     );
 }
+
+#[cfg(feature = "wrapped")]
+pub trait Emissions {
+    /// Claim emissions for a user into their vote token balance
+    ///
+    /// Returns the number of tokens claimed
+    ///
+    /// ### Arguments
+    /// * `address` - The address to claim tokens for
+    fn claim(e: Env, address: Address) -> i128;
+
+    /// (Governor only) Set the emissions configuration for the vote token. Emits the tokens
+    /// evenly over the duration of the emissions period.
+    ///
+    /// ### Arguments
+    /// * `tokens` - The number of new tokens to emit
+    /// * `expiration` - When to stop emitting tokens
+    fn set_emis(e: Env, tokens: i128, expiration: u64);
+}

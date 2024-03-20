@@ -15,10 +15,12 @@ default = ["admin"]
 testutils = ["soroban-sdk/testutils"]
 wrapped = []
 admin = []
+emissions = []
 
 [dependencies]
 soroban-sdk = { workspace = true }
 sep-41-token = { workspace = true }
+soroban-fixed-point-math = { workspace = true }
 
 [dev_dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }

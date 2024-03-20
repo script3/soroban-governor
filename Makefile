@@ -1,7 +1,7 @@
 default: build
 
 test: build
-	cargo test --all --tests
+	cargo test --all --tests --features soroban-votes/wrapped,soroban-votes/emissions
 
 build:
 	mkdir -p target/wasm32-unknown-unknown/optimized
@@ -11,7 +11,7 @@ build:
 		--wasm target/wasm32-unknown-unknown/release/soroban_votes.wasm \
 		--wasm-out target/wasm32-unknown-unknown/optimized/soroban_votes.wasm
 
-	cargo rustc --manifest-path=contracts/votes/Cargo.toml --crate-type=cdylib --target=wasm32-unknown-unknown --release --features soroban-votes/wrapped
+	cargo rustc --manifest-path=contracts/votes/Cargo.toml --crate-type=cdylib --target=wasm32-unknown-unknown --release --features soroban-votes/wrapped,soroban-votes/emissions
 	soroban contract optimize \
 		--wasm target/wasm32-unknown-unknown/release/soroban_votes.wasm \
 		--wasm-out target/wasm32-unknown-unknown/optimized/soroban_votes_wrapped.wasm
@@ -37,7 +37,7 @@ clean:
 generate-js:
 	soroban contract bindings typescript --overwrite \
 		--contract-id CBWH54OKUK6U2J2A4J2REJEYB625NEFCHISWXLOPR2D2D6FTN63TJTWN \
-		--wasm ./target/wasm32-unknown-unknown/optimized/soroban_votes.wasm --output-dir ./js/js-votes/ \
+		--wasm ./target/wasm32-unknown-unknown/optimized/soroban_votes_wrapped.wasm --output-dir ./js/js-votes/ \
 		--rpc-url http://localhost:8000 --network-passphrase "Standalone Network ; February 2017" --network Standalone
 	soroban contract bindings typescript --overwrite \
 		--contract-id CBWH54OKUK6U2J2A4J2REJEYB625NEFCHISWXLOPR2D2D6FTN63TJTWN \
