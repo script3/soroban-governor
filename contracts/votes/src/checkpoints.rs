@@ -3,7 +3,7 @@ use soroban_sdk::{panic_with_error, Address, Env, Vec};
 use crate::{error::TokenVotesError, storage};
 
 pub trait Checkpoint {
-    /// Convert a timestamp and amount to a Checkpoint
+    /// Convert a sequence and amount to a Checkpoint
     ///
     /// The amount value will be truncated to a u96.
     ///
@@ -12,10 +12,10 @@ pub trait Checkpoint {
     /// * amount - The amount to convert
     fn from_checkpoint_data(e: &Env, sequence: u32, amount: i128) -> Self;
 
-    /// Convert a Checkpoint to a timestamp and amount
+    /// Convert a Checkpoint to a sequence and amount
     ///
     /// ### Returns
-    /// * (timestamp, amount) - The timestamp and amount of the Checkpoint
+    /// * (sequence, amount) - The sequence and amount of the Checkpoint
     fn to_checkpoint_data(self) -> (u32, i128);
 }
 
