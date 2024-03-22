@@ -3,10 +3,10 @@ use soroban_sdk::{
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, Events},
     vec, Address, Env, IntoVal, Symbol, Val,
 };
-use tests::{common::create_stellar_token, env::EnvTestUtils, votes::create_wrapped_token_votes};
+use tests::{common::create_stellar_token, env::EnvTestUtils, votes::create_staking_token_votes};
 
 #[test]
-fn test_deposit_for() {
+fn test_deposit() {
     let e = Env::default();
     e.mock_all_auths();
     e.set_default_info();
@@ -16,13 +16,13 @@ fn test_deposit_for() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (votes_id, votes_client) = create_wrapped_token_votes(&e, &token_id, &governor);
+    let (votes_id, votes_client) = create_staking_token_votes(&e, &token_id, &governor);
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&samwise, &initial_balance);
 
     let deposit_amount = 123_7654321;
-    votes_client.deposit_for(&samwise, &deposit_amount);
+    votes_client.deposit(&samwise, &deposit_amount);
 
     // validate auth
     assert_eq!(
@@ -32,7 +32,7 @@ fn test_deposit_for() {
             AuthorizedInvocation {
                 function: AuthorizedFunction::Contract((
                     votes_id.clone(),
-                    Symbol::new(&e, "deposit_for"),
+                    Symbol::new(&e, "deposit"),
                     vec![&e, samwise.to_val(), deposit_amount.into_val(&e),]
                 )),
                 sub_invocations: std::vec![AuthorizedInvocation {
@@ -87,7 +87,7 @@ fn test_deposit_for() {
 
 #[test]
 #[should_panic(expected = "Error(Contract, #8)")]
-fn test_deposit_for_negative_amount() {
+fn test_deposit_negative_amount() {
     let e = Env::default();
     e.mock_all_auths();
 
@@ -96,11 +96,11 @@ fn test_deposit_for_negative_amount() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_wrapped_token_votes(&e, &token_id, &governor);
+    let (_, votes_client) = create_staking_token_votes(&e, &token_id, &governor);
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&samwise, &initial_balance);
 
     let deposit_amount: i128 = -1;
-    votes_client.deposit_for(&samwise, &deposit_amount);
+    votes_client.deposit(&samwise, &deposit_amount);
 }

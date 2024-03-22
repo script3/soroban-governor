@@ -1,4 +1,4 @@
-#![cfg(feature = "emissions")]
+#![cfg(feature = "staking")]
 
 use soroban_fixed_point_math::FixedPoint;
 use soroban_sdk::{panic_with_error, unwrap::UnwrapOptimized, Address, Env};

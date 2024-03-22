@@ -5,10 +5,10 @@ use soroban_sdk::{
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, Events},
     vec, Address, Env, IntoVal, Symbol, TryIntoVal,
 };
-use soroban_votes::TokenVotesClient;
 use tests::{
     env::EnvTestUtils,
     governor::{create_governor, default_governor_settings, default_proposal_data},
+    votes::StakingVotesClient,
 };
 
 #[test]
@@ -23,12 +23,12 @@ fn test_cancel() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_votes: i128 = 1 * 10i128.pow(7);
     token_client.mint(&samwise, &samwise_votes);
-    votes_client.deposit_for(&samwise, &samwise_votes);
+    votes_client.deposit(&samwise, &samwise_votes);
 
     let (title, description, action) = default_proposal_data(&e);
 
@@ -90,12 +90,12 @@ fn test_cancel_council() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_votes: i128 = 1 * 10i128.pow(7);
     token_client.mint(&samwise, &samwise_votes);
-    votes_client.deposit_for(&samwise, &samwise_votes);
+    votes_client.deposit(&samwise, &samwise_votes);
 
     let (title, description, action) = default_proposal_data(&e);
 
@@ -177,12 +177,12 @@ fn test_cancel_proposal_active() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_mint_amount: i128 = 10_000_000;
     token_client.mint(&samwise, &samwise_mint_amount);
-    votes_client.deposit_for(&samwise, &samwise_mint_amount);
+    votes_client.deposit(&samwise, &samwise_mint_amount);
 
     let (title, description, action) = default_proposal_data(&e);
 
@@ -208,12 +208,12 @@ fn test_cancel_unauthorized_address() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_votes: i128 = 1 * 10i128.pow(7);
     token_client.mint(&samwise, &samwise_votes);
-    votes_client.deposit_for(&samwise, &samwise_votes);
+    votes_client.deposit(&samwise, &samwise_votes);
 
     let (title, description, action) = default_proposal_data(&e);
 

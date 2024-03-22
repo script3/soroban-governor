@@ -4,7 +4,7 @@ use soroban_sdk::{
     vec, Address, Env, IntoVal, Symbol,
 };
 use tests::{
-    common::create_stellar_token, env::EnvTestUtils, votes::create_wrapped_token_votes_wasm,
+    common::create_stellar_token, env::EnvTestUtils, votes::create_staking_token_votes_wasm,
 };
 
 #[test]
@@ -19,13 +19,13 @@ fn test_emissions() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (votes_id, votes_client) = create_wrapped_token_votes_wasm(&e, &token_id, &governor);
+    let (votes_id, votes_client) = create_staking_token_votes_wasm(&e, &token_id, &governor);
 
     let mut balance_samwise = 0;
     let mut balance_frodo = 0;
     let initial_balance = 1 * 10i128.pow(7);
     token_client.mint(&samwise, &initial_balance);
-    votes_client.deposit_for(&samwise, &initial_balance);
+    votes_client.deposit(&samwise, &initial_balance);
     balance_samwise += initial_balance;
 
     let t_start = e.ledger().timestamp();
@@ -93,7 +93,7 @@ fn test_emissions() {
 
     // frodo deposits an equal amount as samwise
     token_client.mint(&frodo, &initial_balance);
-    votes_client.deposit_for(&frodo, &initial_balance);
+    votes_client.deposit(&frodo, &initial_balance);
     balance_frodo += initial_balance;
 
     // skip 25k seconds (2/4). Emissions will be split between samwise and frodo
@@ -101,8 +101,11 @@ fn test_emissions() {
     balance_samwise += 12_500 * 10i128.pow(7);
     balance_frodo += 12_500 * 10i128.pow(7);
 
-    // samwise transfers half of his balance to frodo
-    votes_client.transfer(&samwise, &frodo, &(initial_balance / 2));
+    // samwise withdraws half of his balance, and transfers it to frodo
+    // and frodo deposits it
+    votes_client.withdraw(&samwise, &(initial_balance / 2));
+    token_client.transfer(&samwise, &frodo, &(initial_balance / 2));
+    votes_client.deposit(&frodo, &(initial_balance / 2));
     balance_samwise -= initial_balance / 2;
     balance_frodo += initial_balance / 2;
 
@@ -147,7 +150,7 @@ fn test_emissions() {
 
     // withdraw and validate chain results
     assert_eq!(claimed, balance_samwise - initial_balance / 2); // still has half of initial deposit
-    votes_client.withdraw_to(&samwise, &balance_samwise);
+    votes_client.withdraw(&samwise, &balance_samwise);
     assert_eq!(token_client.balance(&samwise), balance_samwise);
 
     // skip 30k seconds (4/4 + some). Last of emissions will be split at 0% sawise and 100% frodo

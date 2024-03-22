@@ -32,20 +32,20 @@ fn test_execute_calldata_no_auths() {
     let votes_client = TokenVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
-    let total_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mock_all_auths().mint(&frodo, &total_votes);
-
-    votes_client
-        .mock_all_auths()
-        .deposit_for(&frodo, &total_votes);
     let samwise_votes = 8_000 * 10i128.pow(7);
-    votes_client
-        .mock_all_auths()
-        .transfer(&frodo, &samwise, &samwise_votes);
     let pippin_votes = 1_000 * 10i128.pow(7);
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    let frodo_votes = total_votes - samwise_votes - pippin_votes;
+    token_client.mock_all_auths().mint(&frodo, &frodo_votes);
+    votes_client.mock_all_auths().deposit(&frodo, &frodo_votes);
+    token_client.mock_all_auths().mint(&samwise, &samwise_votes);
     votes_client
         .mock_all_auths()
-        .transfer(&frodo, &pippin, &pippin_votes);
+        .deposit(&samwise, &samwise_votes);
+    token_client.mock_all_auths().mint(&pippin, &pippin_votes);
+    votes_client
+        .mock_all_auths()
+        .deposit(&pippin, &pippin_votes);
 
     let governor_transfer_amount: i128 = 10i128.pow(7);
     token_client
@@ -81,6 +81,7 @@ fn test_execute_calldata_no_auths() {
     e.jump(settings.timelock);
 
     // remove any potential auth mocking
+    e.set_auths(&[]);
     governor_client.set_auths(&[]);
     governor_client.execute(&proposal_id);
 
@@ -132,9 +133,7 @@ fn test_execute_calldata_auth_chain() {
     // set intial votes
     let frodo_votes: i128 = 10_000 * 10i128.pow(7);
     token_client.mock_all_auths().mint(&frodo, &frodo_votes);
-    votes_client
-        .mock_all_auths()
-        .deposit_for(&frodo, &frodo_votes);
+    votes_client.mock_all_auths().deposit(&frodo, &frodo_votes);
 
     // create a proposal
     let (title, description, _) = default_proposal_data(&e);
@@ -215,9 +214,7 @@ fn test_execute_calldata_single_auth() {
     // set intial votes
     let frodo_votes: i128 = 10_000 * 10i128.pow(7);
     token_client.mock_all_auths().mint(&frodo, &frodo_votes);
-    votes_client
-        .mock_all_auths()
-        .deposit_for(&frodo, &frodo_votes);
+    votes_client.mock_all_auths().deposit(&frodo, &frodo_votes);
 
     // create a proposal
     let (title, description, _) = default_proposal_data(&e);
@@ -258,6 +255,7 @@ fn test_execute_calldata_single_auth() {
     e.jump(settings.timelock);
 
     // remove any potential auth mocking
+    e.set_auths(&[]);
     governor_client.set_auths(&[]);
     governor_client.execute(&proposal_id);
 
@@ -286,9 +284,7 @@ fn test_execute_settings() {
     // set intial votes
     let frodo_votes: i128 = 10_000 * 10i128.pow(7);
     token_client.mock_all_auths().mint(&frodo, &frodo_votes);
-    votes_client
-        .mock_all_auths()
-        .deposit_for(&frodo, &frodo_votes);
+    votes_client.mock_all_auths().deposit(&frodo, &frodo_votes);
 
     // create a proposal
     let new_settings = GovernorSettings {
@@ -322,6 +318,7 @@ fn test_execute_settings() {
     e.jump(settings.timelock);
 
     // remove any potential auth mocking
+    e.set_auths(&[]);
     governor_client.set_auths(&[]);
     governor_client.execute(&proposal_id);
 
@@ -358,9 +355,7 @@ fn test_execute_upgrade() {
     // set intial votes
     let frodo_votes: i128 = 10_000 * 10i128.pow(7);
     token_client.mock_all_auths().mint(&frodo, &frodo_votes);
-    votes_client
-        .mock_all_auths()
-        .deposit_for(&frodo, &frodo_votes);
+    votes_client.mock_all_auths().deposit(&frodo, &frodo_votes);
 
     // create a proposal
     let new_wasm = e
@@ -383,6 +378,7 @@ fn test_execute_upgrade() {
     e.jump(settings.timelock);
 
     // remove any potential auth mocking
+    e.set_auths(&[]);
     governor_client.set_auths(&[]);
     governor_client.execute(&proposal_id);
 
@@ -423,20 +419,20 @@ fn test_execute_expired() {
     let votes_client = TokenVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
-    let total_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mock_all_auths().mint(&frodo, &total_votes);
-
-    votes_client
-        .mock_all_auths()
-        .deposit_for(&frodo, &total_votes);
     let samwise_votes = 8_000 * 10i128.pow(7);
-    votes_client
-        .mock_all_auths()
-        .transfer(&frodo, &samwise, &samwise_votes);
     let pippin_votes = 1_000 * 10i128.pow(7);
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    let frodo_votes = total_votes - samwise_votes - pippin_votes;
+    token_client.mock_all_auths().mint(&frodo, &frodo_votes);
+    votes_client.mock_all_auths().deposit(&frodo, &frodo_votes);
+    token_client.mock_all_auths().mint(&samwise, &samwise_votes);
     votes_client
         .mock_all_auths()
-        .transfer(&frodo, &pippin, &pippin_votes);
+        .deposit(&samwise, &samwise_votes);
+    token_client.mock_all_auths().mint(&pippin, &pippin_votes);
+    votes_client
+        .mock_all_auths()
+        .deposit(&pippin, &pippin_votes);
 
     let governor_transfer_amount: i128 = 10i128.pow(7);
     token_client
@@ -473,6 +469,7 @@ fn test_execute_expired() {
     e.jump(settings.grace_period + 1);
 
     // remove any potential auth mocking
+    e.set_auths(&[]);
     governor_client.set_auths(&[]);
     governor_client.execute(&proposal_id);
 
@@ -537,15 +534,20 @@ fn test_execute_proposal_not_queued() {
     let votes_client = TokenVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
-    let total_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &total_votes);
-    votes_client.deposit_for(&frodo, &total_votes);
-
     let samwise_votes = 8_000 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &samwise, &samwise_votes);
-
     let pippin_votes = 1_000 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &pippin, &pippin_votes);
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    let frodo_votes = total_votes - samwise_votes - pippin_votes;
+    token_client.mock_all_auths().mint(&frodo, &frodo_votes);
+    votes_client.mock_all_auths().deposit(&frodo, &frodo_votes);
+    token_client.mock_all_auths().mint(&samwise, &samwise_votes);
+    votes_client
+        .mock_all_auths()
+        .deposit(&samwise, &samwise_votes);
+    token_client.mock_all_auths().mint(&pippin, &pippin_votes);
+    votes_client
+        .mock_all_auths()
+        .deposit(&pippin, &pippin_votes);
 
     let governor_transfer_amount: i128 = 10_000_000;
     token_client.mint(&samwise, &governor_transfer_amount);
@@ -592,15 +594,20 @@ fn test_execute_timelock_not_met() {
     let votes_client = TokenVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
-    let total_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &total_votes);
-    votes_client.deposit_for(&frodo, &total_votes);
-
     let samwise_votes = 8_000 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &samwise, &samwise_votes);
-
     let pippin_votes = 1_000 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &pippin, &pippin_votes);
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    let frodo_votes = total_votes - samwise_votes - pippin_votes;
+    token_client.mock_all_auths().mint(&frodo, &frodo_votes);
+    votes_client.mock_all_auths().deposit(&frodo, &frodo_votes);
+    token_client.mock_all_auths().mint(&samwise, &samwise_votes);
+    votes_client
+        .mock_all_auths()
+        .deposit(&samwise, &samwise_votes);
+    token_client.mock_all_auths().mint(&pippin, &pippin_votes);
+    votes_client
+        .mock_all_auths()
+        .deposit(&pippin, &pippin_votes);
 
     let governor_transfer_amount: i128 = 10_000_000;
     token_client.mint(&samwise, &governor_transfer_amount);
@@ -647,15 +654,20 @@ fn test_execute_defeated_errors() {
     let votes_client = TokenVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
-    let total_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &total_votes);
-    votes_client.deposit_for(&frodo, &total_votes);
-
     let samwise_votes = 8_000 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &samwise, &samwise_votes);
-
     let pippin_votes = 1_000 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &pippin, &pippin_votes);
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    let frodo_votes = total_votes - samwise_votes - pippin_votes;
+    token_client.mock_all_auths().mint(&frodo, &frodo_votes);
+    votes_client.mock_all_auths().deposit(&frodo, &frodo_votes);
+    token_client.mock_all_auths().mint(&samwise, &samwise_votes);
+    votes_client
+        .mock_all_auths()
+        .deposit(&samwise, &samwise_votes);
+    token_client.mock_all_auths().mint(&pippin, &pippin_votes);
+    votes_client
+        .mock_all_auths()
+        .deposit(&pippin, &pippin_votes);
 
     let governor_transfer_amount: i128 = 10_000_000;
     token_client.mint(&samwise, &governor_transfer_amount);
@@ -708,9 +720,7 @@ fn test_execute_snapshot_errors() {
     // set intial votes
     let frodo_votes: i128 = 10_000 * 10i128.pow(7);
     token_client.mock_all_auths().mint(&frodo, &frodo_votes);
-    votes_client
-        .mock_all_auths()
-        .deposit_for(&frodo, &frodo_votes);
+    votes_client.mock_all_auths().deposit(&frodo, &frodo_votes);
 
     // create a proposal
     let (title, description, _) = default_proposal_data(&e);
@@ -729,6 +739,7 @@ fn test_execute_snapshot_errors() {
     e.jump(settings.timelock);
 
     // remove any potential auth mocking
+    e.set_auths(&[]);
     governor_client.set_auths(&[]);
     governor_client.execute(&proposal_id);
 }

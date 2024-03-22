@@ -1,7 +1,4 @@
-use soroban_sdk::{Address, Env};
-
-#[cfg(all(feature = "admin", not(feature = "wrapped")))]
-use soroban_sdk::String;
+use soroban_sdk::{Address, Env, String};
 
 pub trait Votes {
     /// Get the total supply of voting tokens
@@ -56,14 +53,16 @@ pub trait Votes {
     fn delegate(e: Env, account: Address, delegatee: Address);
 }
 
-#[cfg(feature = "wrapped")]
-pub trait WrappedToken {
+#[cfg(feature = "staking")]
+pub trait Staking {
     /// Setup the votes contract
     ///
     /// ### Arguments
     /// * `token` - The address of the underlying token contract
     /// * `governor`- The address of the Governor contract the votes apply to
-    fn initialize(e: Env, token: Address, governor: Address);
+    /// * `name` - The name of the voting token
+    /// * `symbol` - The symbol of the voting token
+    fn initialize(e: Env, token: Address, governor: Address, name: String, symbol: String);
 
     /// Deposit underlying tokens into the votes contract and mint the corresponding
     /// amount of voting tokens
@@ -71,36 +70,54 @@ pub trait WrappedToken {
     /// ### Arguments
     /// * `from` - The address of the account to deposit for
     /// * `amount` - The amount of underlying tokens to deposit
-    fn deposit_for(e: Env, from: Address, amount: i128);
+    fn deposit(e: Env, from: Address, amount: i128);
 
     /// Burn voting tokens and withdraw the corresponding amount of underlying tokens
     ///
     /// ### Arguments
     /// * `from` - The address of the account to withdraw for
     /// * `amount` - The amount of underlying tokens to withdraw
-    fn withdraw_to(e: Env, from: Address, amount: i128);
-}
+    fn withdraw(e: Env, from: Address, amount: i128);
 
-#[cfg(feature = "admin")]
-pub trait Admin {
-    /// (Admin only) Mint tokens to an address
+    /// Claim emissions for a user into their vote token balance
+    ///
+    /// Returns the number of tokens claimed
     ///
     /// ### Arguments
-    /// * `from` - The address of the account to deposit for
-    /// * `amount` - The amount of underlying tokens to deposit
-    fn mint(e: Env, to: Address, amount: i128);
+    /// * `address` - The address to claim tokens for
+    fn claim(e: Env, address: Address) -> i128;
 
-    /// (Admin only) Set the admin of the token to a new address
+    /// (Governor only) Set the emissions configuration for the vote token. Emits the tokens
+    /// evenly over the duration of the emissions period.
     ///
     /// ### Arguments
-    /// * `new_admin` - The address of the new admin
-    fn set_admin(e: Env, new_admin: Address);
+    /// * `tokens` - The number of new tokens to emit
+    /// * `expiration` - When to stop emitting tokens
+    fn set_emis(e: Env, tokens: i128, expiration: u64);
 
-    /// Get the admin of the token
-    fn admin(e: Env) -> Address;
+    #[cfg(not(feature = "sep-0041"))]
+    /// Returns the balance of `id`.
+    ///
+    /// # Arguments
+    ///
+    /// - `id` - The address for which a balance is being queried. If the
+    /// address has no existing balance, returns 0.
+    fn balance(env: Env, id: Address) -> i128;
+
+    #[cfg(not(feature = "sep-0041"))]
+    /// Returns the number of decimals used to represent amounts of this token.
+    fn decimals(env: Env) -> u32;
+
+    #[cfg(not(feature = "sep-0041"))]
+    /// Returns the name for this token.
+    fn name(env: Env) -> String;
+
+    #[cfg(not(feature = "sep-0041"))]
+    /// Returns the symbol for this token.
+    fn symbol(env: Env) -> String;
 }
 
-#[cfg(all(feature = "admin", not(feature = "wrapped")))]
+#[cfg(all(feature = "sep-0041", not(feature = "staking")))]
 pub trait SorobanOnly {
     /// Setup the votes contract
     ///
@@ -118,23 +135,20 @@ pub trait SorobanOnly {
         name: String,
         symbol: String,
     );
-}
 
-#[cfg(feature = "wrapped")]
-pub trait Emissions {
-    /// Claim emissions for a user into their vote token balance
-    ///
-    /// Returns the number of tokens claimed
+    /// (Admin only) Mint tokens to an address
     ///
     /// ### Arguments
-    /// * `address` - The address to claim tokens for
-    fn claim(e: Env, address: Address) -> i128;
+    /// * `from` - The address of the account to deposit for
+    /// * `amount` - The amount of underlying tokens to deposit
+    fn mint(e: Env, to: Address, amount: i128);
 
-    /// (Governor only) Set the emissions configuration for the vote token. Emits the tokens
-    /// evenly over the duration of the emissions period.
+    /// (Admin only) Set the admin of the token to a new address
     ///
     /// ### Arguments
-    /// * `tokens` - The number of new tokens to emit
-    /// * `expiration` - When to stop emitting tokens
-    fn set_emis(e: Env, tokens: i128, expiration: u64);
+    /// * `new_admin` - The address of the new admin
+    fn set_admin(e: Env, new_admin: Address);
+
+    /// Get the admin of the token
+    fn admin(e: Env) -> Address;
 }

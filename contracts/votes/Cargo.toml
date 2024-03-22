@@ -11,11 +11,9 @@ crate-type = ["cdylib", "rlib"]
 doctest = false
 
 [features]
-default = ["admin"]
 testutils = ["soroban-sdk/testutils"]
-wrapped = []
-admin = []
-emissions = []
+staking = []
+sep-0041 = []
 
 [dependencies]
 soroban-sdk = { workspace = true }

@@ -3,7 +3,7 @@ use soroban_sdk::{testutils::Address as _, Address, Env, Error};
 use tests::{
     common::create_stellar_token,
     env::EnvTestUtils,
-    votes::{create_wrapped_token_votes, create_wrapped_token_votes_wasm},
+    votes::{create_soroban_token_votes_wasm, create_staking_token_votes},
     ONE_DAY_LEDGERS,
 };
 
@@ -20,7 +20,7 @@ fn test_get_past() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_wrapped_token_votes(&e, &token_id, &governor);
+    let (_, votes_client) = create_staking_token_votes(&e, &token_id, &governor);
 
     // setup vote ledgers - do a ledger before each action to verify the actions
     // occuring after the vote starts are recorded properly
@@ -35,10 +35,10 @@ fn test_get_past() {
     token_client.mint(&pippin, &initial_balance);
 
     let deposit_amount_frodo = 1_000 * 10i128.pow(7);
-    votes_client.deposit_for(&frodo, &deposit_amount_frodo);
+    votes_client.deposit(&frodo, &deposit_amount_frodo);
 
     let deposit_amount_samwise = 250 * 10i128.pow(7);
-    votes_client.deposit_for(&samwise, &deposit_amount_samwise);
+    votes_client.deposit(&samwise, &deposit_amount_samwise);
 
     assert_eq!(
         votes_client.total_supply(),
@@ -49,8 +49,13 @@ fn test_get_past() {
 
     // transfer some tokens to verify that the total supply remains constant
     let transfer_amount = 100 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &pippin, &transfer_amount);
-    votes_client.transfer(&samwise, &pippin, &transfer_amount);
+    votes_client.withdraw(&frodo, &transfer_amount);
+    token_client.transfer(&frodo, &pippin, &transfer_amount);
+    votes_client.deposit(&pippin, &transfer_amount);
+
+    votes_client.withdraw(&samwise, &transfer_amount);
+    token_client.transfer(&samwise, &pippin, &transfer_amount);
+    votes_client.deposit(&pippin, &transfer_amount);
 
     assert_eq!(
         votes_client.total_supply(),
@@ -67,7 +72,7 @@ fn test_get_past() {
     // withdraw some tokens
     let withdraw_amount = 75 * 10i128.pow(7);
 
-    votes_client.withdraw_to(&pippin, &withdraw_amount);
+    votes_client.withdraw(&pippin, &withdraw_amount);
 
     assert_eq!(
         votes_client.total_supply(),
@@ -87,7 +92,7 @@ fn test_get_past() {
     // deposit tokens
     let deposit_amount_pippin = 50_000 * 10i128.pow(7);
 
-    votes_client.deposit_for(&pippin, &deposit_amount_pippin);
+    votes_client.deposit(&pippin, &deposit_amount_pippin);
 
     // verify current values
     assert_eq!(
@@ -167,7 +172,7 @@ fn test_get_past_same_sequence_as_ledger() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_wrapped_token_votes(&e, &token_id, &governor);
+    let (_, votes_client) = create_staking_token_votes(&e, &token_id, &governor);
 
     let cur_ledger = e.ledger().sequence();
     votes_client.set_vote_sequence(&(cur_ledger + 99));
@@ -178,10 +183,10 @@ fn test_get_past_same_sequence_as_ledger() {
     token_client.mint(&pippin, &initial_balance);
 
     let deposit_amount_frodo = 1_000 * 10i128.pow(7);
-    votes_client.deposit_for(&frodo, &deposit_amount_frodo);
+    votes_client.deposit(&frodo, &deposit_amount_frodo);
 
     let deposit_amount_samwise = 250 * 10i128.pow(7);
-    votes_client.deposit_for(&samwise, &deposit_amount_samwise);
+    votes_client.deposit(&samwise, &deposit_amount_samwise);
 
     e.jump(10);
 
@@ -225,9 +230,7 @@ fn test_past_checkpoints_get_pruned() {
     let pippin = Address::generate(&e);
     let governor = Address::generate(&e);
 
-    let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    // @dev: Test with wasm version due to omission of code path in the happy path
-    let (_, votes_client) = create_wrapped_token_votes_wasm(&e, &token_id, &governor);
+    let (_, votes_client) = create_soroban_token_votes_wasm(&e, &bombadil, &governor);
 
     // setup vote ledgers - do a ledger before each action to verify the actions
     // occuring after the vote starts are recorded properly
@@ -242,19 +245,14 @@ fn test_past_checkpoints_get_pruned() {
     votes_client.set_vote_sequence(&start_vote_3);
 
     // Time = 10 days ago
-    let initial_balance = 100_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &initial_balance);
-    token_client.mint(&samwise, &initial_balance);
-    token_client.mint(&pippin, &initial_balance);
-
     let deposit_amount_frodo = 1_000 * 10i128.pow(7);
-    votes_client.deposit_for(&frodo, &deposit_amount_frodo);
+    votes_client.mint(&frodo, &deposit_amount_frodo);
 
     e.jump(ONE_DAY_LEDGERS);
     // Time = 9 days ago (vote 0 passed by 1 ledger)
 
     let deposit_amount_samwise = 250 * 10i128.pow(7);
-    votes_client.deposit_for(&samwise, &deposit_amount_samwise);
+    votes_client.mint(&samwise, &deposit_amount_samwise);
 
     let transfer_1_amount = 100 * 10i128.pow(7);
     votes_client.transfer(&samwise, &frodo, &transfer_1_amount);
@@ -263,7 +261,7 @@ fn test_past_checkpoints_get_pruned() {
     // Time = 6 days ago (vote 1 passed by 1 ledger)
 
     let deposit_amount_pippin = 5_000 * 10i128.pow(7);
-    votes_client.deposit_for(&pippin, &deposit_amount_pippin);
+    votes_client.mint(&pippin, &deposit_amount_pippin);
 
     e.jump(4 * ONE_DAY_LEDGERS);
     // Time = 2 days ago (vote 2 passed by 1 ledger)
@@ -293,7 +291,7 @@ fn test_past_checkpoints_get_pruned() {
     votes_client.transfer(&pippin, &frodo, &transfer_3_amount);
 
     let deposit_2_amount_samwise = 50 * 10i128.pow(7);
-    votes_client.deposit_for(&samwise, &deposit_2_amount_samwise);
+    votes_client.mint(&samwise, &deposit_2_amount_samwise);
 
     let max_vote_period_check = e.ledger().sequence() - 7 * ONE_DAY_LEDGERS;
 
