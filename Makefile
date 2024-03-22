@@ -37,7 +37,11 @@ clean:
 generate-js:
 	soroban contract bindings typescript --overwrite \
 		--contract-id CBWH54OKUK6U2J2A4J2REJEYB625NEFCHISWXLOPR2D2D6FTN63TJTWN \
-		--wasm ./target/wasm32-unknown-unknown/optimized/soroban_votes_staking.wasm --output-dir ./js/js-votes/ \
+		--wasm ./target/wasm32-unknown-unknown/optimized/soroban_votes_staking.wasm --output-dir ./js/js-votes-staking/ \
+		--rpc-url http://localhost:8000 --network-passphrase "Standalone Network ; February 2017" --network Standalone
+	soroban contract bindings typescript --overwrite \
+		--contract-id CBWH54OKUK6U2J2A4J2REJEYB625NEFCHISWXLOPR2D2D6FTN63TJTWN \
+		--wasm ./target/wasm32-unknown-unknown/optimized/soroban_votes.wasm --output-dir ./js/js-votes/ \
 		--rpc-url http://localhost:8000 --network-passphrase "Standalone Network ; February 2017" --network Standalone
 	soroban contract bindings typescript --overwrite \
 		--contract-id CBWH54OKUK6U2J2A4J2REJEYB625NEFCHISWXLOPR2D2D6FTN63TJTWN \
