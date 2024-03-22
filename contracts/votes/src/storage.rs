@@ -21,14 +21,14 @@ const TOTAL_SUPPLY_KEY: Symbol = symbol_short!("SUPPLY");
 const TOTAL_SUPPLY_CHECK_KEY: Symbol = symbol_short!("SPLYCHECK");
 const VOTE_LEDGERS_KEY: Symbol = symbol_short!("VOTE_SEQ");
 
-#[cfg(feature = "admin")]
+#[cfg(all(feature = "sep-0041", not(feature = "staking")))]
 const ADMIN_KEY: Symbol = symbol_short!("ADMIN");
 
-#[cfg(feature = "wrapped")]
+#[cfg(feature = "staking")]
 const TOKEN_KEY: Symbol = symbol_short!("TOKEN");
-#[cfg(feature = "emissions")]
+#[cfg(feature = "staking")]
 const EMIS_CONFIG: Symbol = symbol_short!("EMIS_CFG");
-#[cfg(feature = "emissions")]
+#[cfg(feature = "staking")]
 const EMIS_DATA: Symbol = symbol_short!("EMIS_DATA");
 
 #[derive(Clone)]
@@ -54,7 +54,7 @@ pub enum DataKey {
     Delegate(Address),
 }
 
-#[cfg(feature = "emissions")]
+#[cfg(feature = "staking")]
 #[derive(Clone)]
 #[contracttype]
 pub struct EmisKey(Address);
@@ -69,7 +69,7 @@ pub struct TokenMetadata {
     pub symbol: String,
 }
 
-#[cfg(feature = "emissions")]
+#[cfg(feature = "staking")]
 // The emission configuration
 #[derive(Clone)]
 #[contracttype]
@@ -78,7 +78,7 @@ pub struct EmissionConfig {
     pub eps: u64,
 }
 
-#[cfg(feature = "emissions")]
+#[cfg(feature = "staking")]
 // The emission data
 #[derive(Clone)]
 #[contracttype]
@@ -87,7 +87,7 @@ pub struct EmissionData {
     pub last_time: u64,
 }
 
-#[cfg(feature = "emissions")]
+#[cfg(feature = "staking")]
 // The emission data for a user
 #[derive(Clone)]
 #[contracttype]
@@ -174,24 +174,24 @@ pub fn set_metadata(e: &Env, metadata: &TokenMetadata) {
 
 // --- Admin
 
-#[cfg(feature = "admin")]
+#[cfg(all(feature = "sep-0041", not(feature = "staking")))]
 pub fn get_admin(e: &Env) -> Address {
     e.storage().instance().get(&ADMIN_KEY).unwrap_optimized()
 }
 
-#[cfg(feature = "admin")]
+#[cfg(all(feature = "sep-0041", not(feature = "staking")))]
 pub fn set_admin(e: &Env, address: &Address) {
     e.storage().instance().set(&ADMIN_KEY, address);
 }
 
 // --- Wrapped Token
 
-#[cfg(feature = "wrapped")]
+#[cfg(feature = "staking")]
 pub fn get_token(e: &Env) -> Address {
     e.storage().instance().get(&TOKEN_KEY).unwrap_optimized()
 }
 
-#[cfg(feature = "wrapped")]
+#[cfg(feature = "staking")]
 pub fn set_token(e: &Env, address: &Address) {
     e.storage().instance().set(&TOKEN_KEY, address);
 }
@@ -283,6 +283,7 @@ pub fn set_delegate(e: &Env, address: &Address, delegatee: &Address) {
 
 // Allowance
 
+#[cfg(feature = "sep-0041")]
 pub fn get_allowance(e: &Env, from: &Address, spender: &Address) -> AllowanceValue {
     let key = DataKey::Allowance(AllowanceDataKey {
         from: from.clone(),
@@ -295,6 +296,7 @@ pub fn get_allowance(e: &Env, from: &Address, spender: &Address) -> AllowanceVal
     })
 }
 
+#[cfg(feature = "sep-0041")]
 pub fn set_allowance(
     e: &Env,
     from: &Address,
@@ -381,7 +383,7 @@ pub fn set_voting_units_checkpoints(e: &Env, address: &Address, balance: &Vec<u1
 
 // Emission config
 
-#[cfg(feature = "emissions")]
+#[cfg(feature = "staking")]
 pub fn get_emission_config(e: &Env) -> Option<EmissionConfig> {
     get_persistent_default(
         e,
@@ -392,7 +394,7 @@ pub fn get_emission_config(e: &Env) -> Option<EmissionConfig> {
     )
 }
 
-#[cfg(feature = "emissions")]
+#[cfg(feature = "staking")]
 pub fn set_emission_config(e: &Env, config: &EmissionConfig) {
     e.storage().persistent().set(&EMIS_CONFIG, config);
     e.storage().persistent().extend_ttl(
@@ -404,7 +406,7 @@ pub fn set_emission_config(e: &Env, config: &EmissionConfig) {
 
 // Emission data
 
-#[cfg(feature = "emissions")]
+#[cfg(feature = "staking")]
 pub fn get_emission_data(e: &Env) -> Option<EmissionData> {
     get_persistent_default(
         e,
@@ -415,7 +417,7 @@ pub fn get_emission_data(e: &Env) -> Option<EmissionData> {
     )
 }
 
-#[cfg(feature = "emissions")]
+#[cfg(feature = "staking")]
 pub fn set_emission_data(e: &Env, config: &EmissionData) {
     e.storage().persistent().set(&EMIS_DATA, config);
     e.storage().persistent().extend_ttl(
@@ -427,7 +429,7 @@ pub fn set_emission_data(e: &Env, config: &EmissionData) {
 
 // User emission data
 
-#[cfg(feature = "emissions")]
+#[cfg(feature = "staking")]
 pub fn get_user_emission_data(e: &Env, user: &Address) -> Option<UserEmissionData> {
     get_persistent_default(
         e,
@@ -438,7 +440,7 @@ pub fn get_user_emission_data(e: &Env, user: &Address) -> Option<UserEmissionDat
     )
 }
 
-#[cfg(feature = "emissions")]
+#[cfg(feature = "staking")]
 pub fn set_user_emission_data(e: &Env, user: &Address, data: &UserEmissionData) {
     let key = EmisKey(user.clone());
     e.storage().persistent().set(&key, data);

@@ -1,14 +1,14 @@
 #[cfg(test)]
-use sep_41_token::testutils::MockTokenClient;
 use soroban_governor::types::{Calldata, ProposalAction};
 use soroban_governor::GovernorContractClient;
 use soroban_sdk::{testutils::Address as _, vec, Address, Env, Error, IntoVal, Symbol};
-use soroban_votes::TokenVotesClient;
-use tests::governor::create_governor;
+use tests::common::create_stellar_token;
+use tests::governor::create_soroban_governor_wasm;
 use tests::{
     env::EnvTestUtils,
     governor::{default_governor_settings, default_proposal_data},
     mocks::create_mock_subcall_contract_wasm,
+    votes::SorobanVotesClient,
 };
 
 /// @dev
@@ -28,11 +28,11 @@ fn test_double_count() {
     let pippin = Address::generate(&e);
 
     let settings = default_governor_settings(&e);
-    let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
-    let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let (governor_address, votes_address) = create_soroban_governor_wasm(&e, &bombadil, &settings);
+    let votes_client = SorobanVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
+
+    let (token_address, token_client) = create_stellar_token(&e, &bombadil);
     let (subcall_address, _) =
         create_mock_subcall_contract_wasm(&e, &token_address, &governor_address);
 
@@ -41,16 +41,13 @@ fn test_double_count() {
 
     // set intial votes
     let frodo_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &frodo_votes);
-    votes_client.deposit_for(&frodo, &frodo_votes);
+    votes_client.mint(&frodo, &frodo_votes);
 
     let samwise_votes = 5_000 * 10i128.pow(7);
-    token_client.mint(&samwise, &samwise_votes);
-    votes_client.deposit_for(&samwise, &samwise_votes);
+    votes_client.mint(&samwise, &samwise_votes);
 
     let pippin_votes = 9_000 * 10i128.pow(7);
-    token_client.mint(&pippin, &pippin_votes);
-    votes_client.deposit_for(&pippin, &pippin_votes);
+    votes_client.mint(&pippin, &pippin_votes);
 
     let total_votes = frodo_votes + samwise_votes + pippin_votes;
 
@@ -87,8 +84,7 @@ fn test_double_count() {
     e.jump(settings.vote_delay - 1);
 
     // pippin mints more tokens
-    token_client.mint(&pippin, &pippin_votes);
-    votes_client.deposit_for(&pippin, &pippin_votes);
+    votes_client.mint(&pippin, &pippin_votes);
 
     // pass time to the same ledger voting starts
     e.jump(1);
@@ -99,8 +95,7 @@ fn test_double_count() {
 
     // frodo mints more tokens
     let double_vote_amount = 9 * 10i128.pow(7);
-    token_client.mint(&frodo, &double_vote_amount);
-    votes_client.deposit_for(&frodo, &double_vote_amount);
+    votes_client.mint(&frodo, &double_vote_amount);
 
     // frodo votes and fails
     let result = governor_client.try_vote(&frodo, &proposal_id, &2);

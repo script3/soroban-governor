@@ -6,10 +6,10 @@ use soroban_sdk::{
     testutils::{Address as _, Events},
     vec, Address, Env, IntoVal, Symbol,
 };
-use soroban_votes::TokenVotesClient;
 use tests::{
     env::EnvTestUtils,
     governor::{create_governor, default_governor_settings, default_proposal_data},
+    votes::StakingVotesClient,
 };
 
 #[test]
@@ -27,18 +27,21 @@ fn test_close_successful() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
-    let total_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &total_votes);
-    votes_client.deposit_for(&frodo, &total_votes);
-
     let samwise_votes = 105 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &samwise, &samwise_votes);
-
     let pippin_votes = 100 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &pippin, &pippin_votes);
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    let frodo_votes = total_votes - samwise_votes - pippin_votes;
+    token_client.mint(&frodo, &frodo_votes);
+    votes_client.deposit(&frodo, &frodo_votes);
+
+    token_client.mint(&samwise, &samwise_votes);
+    votes_client.deposit(&samwise, &samwise_votes);
+
+    token_client.mint(&pippin, &pippin_votes);
+    votes_client.deposit(&pippin, &pippin_votes);
 
     let (title, description, action) = default_proposal_data(&e);
 
@@ -100,18 +103,21 @@ fn test_close_defeated_quorum_not_met() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
-    let total_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &total_votes);
-    votes_client.deposit_for(&frodo, &total_votes);
-
     let samwise_votes = 99 * 10i128.pow(7); // quorum is 1%
-    votes_client.transfer(&frodo, &samwise, &samwise_votes);
-
     let pippin_votes = 10 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &pippin, &pippin_votes);
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    let frodo_votes = total_votes - samwise_votes - pippin_votes;
+    token_client.mint(&frodo, &frodo_votes);
+    votes_client.deposit(&frodo, &frodo_votes);
+
+    token_client.mint(&samwise, &samwise_votes);
+    votes_client.deposit(&samwise, &samwise_votes);
+
+    token_client.mint(&pippin, &pippin_votes);
+    votes_client.deposit(&pippin, &pippin_votes);
 
     let (title, description, action) = default_proposal_data(&e);
 
@@ -169,18 +175,21 @@ fn test_close_defeated_threshold_not_met() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
-    let total_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &total_votes);
-    votes_client.deposit_for(&frodo, &total_votes);
-
     let samwise_votes = 200 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &samwise, &samwise_votes);
-
     let pippin_votes = 200 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &pippin, &pippin_votes);
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    let frodo_votes = total_votes - samwise_votes - pippin_votes;
+    token_client.mint(&frodo, &frodo_votes);
+    votes_client.deposit(&frodo, &frodo_votes);
+
+    token_client.mint(&samwise, &samwise_votes);
+    votes_client.deposit(&samwise, &samwise_votes);
+
+    token_client.mint(&pippin, &pippin_votes);
+    votes_client.deposit(&pippin, &pippin_votes);
 
     let (title, description, action) = default_proposal_data(&e);
 
@@ -239,18 +248,21 @@ fn test_close_expired() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
-    let total_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &total_votes);
-    votes_client.deposit_for(&frodo, &total_votes);
-
     let samwise_votes = 105 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &samwise, &samwise_votes);
-
     let pippin_votes = 100 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &pippin, &pippin_votes);
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    let frodo_votes = total_votes - samwise_votes - pippin_votes;
+    token_client.mint(&frodo, &frodo_votes);
+    votes_client.deposit(&frodo, &frodo_votes);
+
+    token_client.mint(&samwise, &samwise_votes);
+    votes_client.deposit(&samwise, &samwise_votes);
+
+    token_client.mint(&pippin, &pippin_votes);
+    votes_client.deposit(&pippin, &pippin_votes);
 
     let (title, description, action) = default_proposal_data(&e);
 
@@ -313,21 +325,25 @@ fn test_close_tracks_quorum_with_counting_type() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
-    let total_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &total_votes);
-    votes_client.deposit_for(&frodo, &total_votes);
-
     let samwise_votes = 50 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &samwise, &samwise_votes);
-
     let pippin_votes = 10 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &pippin, &pippin_votes);
-
     let merry_votes = 90 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &merry, &merry_votes);
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    let frodo_votes = total_votes - samwise_votes - pippin_votes - merry_votes;
+    token_client.mint(&frodo, &frodo_votes);
+    votes_client.deposit(&frodo, &frodo_votes);
+
+    token_client.mint(&samwise, &samwise_votes);
+    votes_client.deposit(&samwise, &samwise_votes);
+
+    token_client.mint(&pippin, &pippin_votes);
+    votes_client.deposit(&pippin, &pippin_votes);
+
+    token_client.mint(&merry, &merry_votes);
+    votes_client.deposit(&merry, &merry_votes);
 
     let (title, description, action) = default_proposal_data(&e);
 
@@ -361,18 +377,21 @@ fn test_close_successful_non_executable() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
-    let total_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &total_votes);
-    votes_client.deposit_for(&frodo, &total_votes);
-
     let samwise_votes = 105 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &samwise, &samwise_votes);
-
     let pippin_votes = 100 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &pippin, &pippin_votes);
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    let frodo_votes = total_votes - samwise_votes - pippin_votes;
+    token_client.mint(&frodo, &frodo_votes);
+    votes_client.deposit(&frodo, &frodo_votes);
+
+    token_client.mint(&samwise, &samwise_votes);
+    votes_client.deposit(&samwise, &samwise_votes);
+
+    token_client.mint(&pippin, &pippin_votes);
+    votes_client.deposit(&pippin, &pippin_votes);
 
     let (title, description, _) = default_proposal_data(&e);
     let action = ProposalAction::Snapshot;
@@ -404,12 +423,12 @@ fn test_close_nonexistent_proposal() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_mint_amount: i128 = 10_000_000;
     token_client.mint(&samwise, &samwise_mint_amount);
-    votes_client.deposit_for(&samwise, &samwise_mint_amount);
+    votes_client.deposit(&samwise, &samwise_mint_amount);
 
     let proposal_id = e.as_contract(&governor_address, || {
         return storage::get_next_proposal_id(&e);
@@ -430,12 +449,12 @@ fn test_close_vote_period_unfinished() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_mint_amount: i128 = 10_000_000;
     token_client.mint(&samwise, &samwise_mint_amount);
-    votes_client.deposit_for(&samwise, &samwise_mint_amount);
+    votes_client.deposit(&samwise, &samwise_mint_amount);
 
     let (title, description, action) = default_proposal_data(&e);
 

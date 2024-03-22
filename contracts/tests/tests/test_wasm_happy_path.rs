@@ -3,13 +3,13 @@ use sep_41_token::testutils::MockTokenClient;
 use soroban_governor::types::{Calldata, ProposalAction, ProposalStatus};
 use soroban_governor::GovernorContractClient;
 use soroban_sdk::{testutils::Address as _, vec, Address, Env, IntoVal, Symbol};
-use soroban_votes::TokenVotesClient;
 use tests::common::create_stellar_token;
 use tests::governor::create_soroban_governor_wasm;
 use tests::{
     env::EnvTestUtils,
     governor::{create_governor_wasm, default_governor_settings, default_proposal_data},
     mocks::create_mock_subcall_contract_wasm,
+    votes::{SorobanVotesClient, StakingVotesClient},
 };
 
 const ONE_HOUR: u32 = 60 * 60 / 5;
@@ -31,7 +31,7 @@ fn test_wasm_happy_path() {
     let (governor_address, token_address, votes_address) =
         create_governor_wasm(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
     let (subcall_address, _) =
         create_mock_subcall_contract_wasm(&e, &token_address, &governor_address);
@@ -42,15 +42,15 @@ fn test_wasm_happy_path() {
     // set intial votes
     let mut frodo_votes: i128 = 10_000 * 10i128.pow(7);
     token_client.mint(&frodo, &frodo_votes);
-    votes_client.deposit_for(&frodo, &frodo_votes);
+    votes_client.deposit(&frodo, &frodo_votes);
 
     let mut samwise_votes = 5_000 * 10i128.pow(7);
     token_client.mint(&samwise, &samwise_votes);
-    votes_client.deposit_for(&samwise, &samwise_votes);
+    votes_client.deposit(&samwise, &samwise_votes);
 
     let pippin_votes = 9_000 * 10i128.pow(7);
     token_client.mint(&pippin, &pippin_votes);
-    votes_client.deposit_for(&pippin, &pippin_votes);
+    votes_client.deposit(&pippin, &pippin_votes);
 
     let mut total_votes = frodo_votes + samwise_votes + pippin_votes;
 
@@ -90,13 +90,17 @@ fn test_wasm_happy_path() {
     frodo_votes += samwise_votes;
     samwise_votes = 0;
 
-    votes_client.transfer(&samwise, &merry, &(1000 * 10i128.pow(7)));
+    let transfer_1_amount = 1000 * 10i128.pow(7);
+    votes_client.withdraw(&samwise, &transfer_1_amount);
+    token_client.transfer(&samwise, &merry, &transfer_1_amount);
+    votes_client.deposit(&merry, &transfer_1_amount);
+    // votes_client.transfer(&samwise, &merry, &(1000 * 10i128.pow(7)));
     frodo_votes -= 1000 * 10i128.pow(7);
     let mut merry_votes = 1000 * 10i128.pow(7);
 
     merry_votes += 2_000 * 10i128.pow(7);
     token_client.mint(&merry, &(2_000 * 10i128.pow(7)));
-    votes_client.deposit_for(&merry, &(2_000 * 10i128.pow(7)));
+    votes_client.deposit(&merry, &(2_000 * 10i128.pow(7)));
     total_votes += 2_000 * 10i128.pow(7);
 
     assert_eq!(votes_client.get_votes(&frodo), frodo_votes);
@@ -113,7 +117,7 @@ fn test_wasm_happy_path() {
     votes_client.delegate(&merry, &pippin);
     let late_mint_votes = 500 * 10i128.pow(7);
     token_client.mint(&merry, &late_mint_votes);
-    votes_client.deposit_for(&merry, &late_mint_votes);
+    votes_client.deposit(&merry, &late_mint_votes);
     assert_eq!(votes_client.get_votes(&merry), 0);
     assert_eq!(
         votes_client.get_votes(&pippin),
@@ -171,7 +175,7 @@ fn test_wasm_happy_path_soroban_token() {
     let settings = default_governor_settings(&e);
     let (token_address, token_client) = create_stellar_token(&e, &bombadil);
     let (governor_address, votes_address) = create_soroban_governor_wasm(&e, &bombadil, &settings);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = SorobanVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
     let (subcall_address, _) =
         create_mock_subcall_contract_wasm(&e, &token_address, &governor_address);

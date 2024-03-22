@@ -3,10 +3,10 @@ use soroban_sdk::{
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, Events},
     vec, Address, Env, IntoVal, Symbol, Val,
 };
-use tests::{common::create_stellar_token, env::EnvTestUtils, votes::create_wrapped_token_votes};
+use tests::{common::create_stellar_token, env::EnvTestUtils, votes::create_staking_token_votes};
 
 #[test]
-fn test_withdraw_to() {
+fn test_withdraw() {
     let e = Env::default();
     e.mock_all_auths();
     e.set_default_info();
@@ -16,7 +16,7 @@ fn test_withdraw_to() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (votes_id, votes_client) = create_wrapped_token_votes(&e, &token_id, &governor);
+    let (votes_id, votes_client) = create_staking_token_votes(&e, &token_id, &governor);
 
     votes_client.set_vote_sequence(&(e.ledger().sequence() + 1000 - 1));
 
@@ -24,12 +24,12 @@ fn test_withdraw_to() {
     token_client.mint(&samwise, &initial_balance);
 
     let deposit_amount = 123_7654321;
-    votes_client.deposit_for(&samwise, &deposit_amount);
+    votes_client.deposit(&samwise, &deposit_amount);
 
     e.jump(1000);
 
     let withdraw_amount = 100 * 10i128.pow(7);
-    votes_client.withdraw_to(&samwise, &withdraw_amount);
+    votes_client.withdraw(&samwise, &withdraw_amount);
 
     // validate auth
     assert_eq!(
@@ -39,7 +39,7 @@ fn test_withdraw_to() {
             AuthorizedInvocation {
                 function: AuthorizedFunction::Contract((
                     votes_id.clone(),
-                    Symbol::new(&e, "withdraw_to"),
+                    Symbol::new(&e, "withdraw"),
                     vec![&e, samwise.to_val(), withdraw_amount.into_val(&e),]
                 )),
                 sub_invocations: std::vec![]
@@ -104,7 +104,7 @@ fn test_withdraw_to() {
 }
 
 #[test]
-fn test_withdraw_to_full_balance() {
+fn test_withdraw_full_balance() {
     let e = Env::default();
     e.mock_all_auths();
     e.set_default_info();
@@ -114,17 +114,17 @@ fn test_withdraw_to_full_balance() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (votes_id, votes_client) = create_wrapped_token_votes(&e, &token_id, &governor);
+    let (votes_id, votes_client) = create_staking_token_votes(&e, &token_id, &governor);
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&samwise, &initial_balance);
 
     let deposit_amount = 123_7654321;
-    votes_client.deposit_for(&samwise, &deposit_amount);
+    votes_client.deposit(&samwise, &deposit_amount);
 
     e.jump(1000);
 
-    votes_client.withdraw_to(&samwise, &deposit_amount);
+    votes_client.withdraw(&samwise, &deposit_amount);
 
     assert_eq!(votes_client.balance(&samwise), 0);
     assert_eq!(votes_client.total_supply(), 0);
@@ -135,7 +135,7 @@ fn test_withdraw_to_full_balance() {
 
 #[test]
 #[should_panic(expected = "Error(Contract, #8)")]
-fn test_withdraw_to_negative_amount() {
+fn test_withdraw_negative_amount() {
     let e = Env::default();
     e.mock_all_auths();
     e.set_default_info();
@@ -145,23 +145,23 @@ fn test_withdraw_to_negative_amount() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_wrapped_token_votes(&e, &token_id, &governor);
+    let (_, votes_client) = create_staking_token_votes(&e, &token_id, &governor);
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&samwise, &initial_balance);
 
     let deposit_amount = 123_7654321;
-    votes_client.deposit_for(&samwise, &deposit_amount);
+    votes_client.deposit(&samwise, &deposit_amount);
 
     e.jump(1000);
 
     let withdraw_amount = -1 * 10i128.pow(7);
-    votes_client.withdraw_to(&samwise, &withdraw_amount);
+    votes_client.withdraw(&samwise, &withdraw_amount);
 }
 
 #[test]
 #[should_panic(expected = "Error(Contract, #10)")]
-fn test_withdraw_to_more_than_balance() {
+fn test_withdraw_more_than_balance() {
     let e = Env::default();
     e.mock_all_auths();
     e.set_default_info();
@@ -171,16 +171,16 @@ fn test_withdraw_to_more_than_balance() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_wrapped_token_votes(&e, &token_id, &governor);
+    let (_, votes_client) = create_staking_token_votes(&e, &token_id, &governor);
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&samwise, &initial_balance);
 
     let deposit_amount = 123_7654321;
-    votes_client.deposit_for(&samwise, &deposit_amount);
+    votes_client.deposit(&samwise, &deposit_amount);
 
     e.jump(1000);
 
     let withdraw_amount = deposit_amount + 1;
-    votes_client.withdraw_to(&samwise, &withdraw_amount);
+    votes_client.withdraw(&samwise, &withdraw_amount);
 }

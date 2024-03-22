@@ -63,7 +63,7 @@ fn test_initialize_proposal_exceeds_max_lifetime() {
     let govenor: GovernorContractClient<'_> = GovernorContractClient::new(&e, &address);
     let votes = Address::generate(&e);
     let mut settings = default_governor_settings(&e);
-    settings.vote_delay = 4 * 17280;
+    settings.vote_delay = 5 * 17280;
     settings.vote_period = 5 * 17280;
     settings.timelock = 7 * 17280;
     settings.grace_period = 7 * 17280 + 1;

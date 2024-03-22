@@ -1,10 +1,8 @@
-use sep_41_token::{Token, TokenEvents};
 use soroban_sdk::{
     contract, contractimpl, panic_with_error, unwrap::UnwrapOptimized, Address, Env, String,
 };
 
 use crate::{
-    allowance::{create_allowance, spend_allowance},
     balance,
     checkpoints::{upper_lookup, Checkpoint},
     constants::MAX_CHECKPOINT_AGE_LEDGERS,
@@ -16,26 +14,33 @@ use crate::{
     voting_units::move_voting_units,
 };
 
-#[cfg(feature = "admin")]
-use crate::votes::Admin;
+// SEP-0041 Feature imports
 
-#[cfg(feature = "wrapped")]
-use crate::votes::WrappedToken;
-#[cfg(feature = "wrapped")]
-use soroban_sdk::token::TokenClient;
+#[cfg(feature = "sep-0041")]
+use sep_41_token::{Token, TokenEvents};
 
-#[cfg(feature = "emissions")]
+#[cfg(feature = "sep-0041")]
+use crate::allowance::{create_allowance, spend_allowance};
+
+// Staking Feature imports
+
+#[cfg(feature = "staking")]
 use crate::{
     emissions::{claim_emissions, set_emissions},
-    votes::Emissions,
+    votes::Staking,
 };
+#[cfg(feature = "staking")]
+use soroban_sdk::token::TokenClient;
 
-#[cfg(all(feature = "admin", not(feature = "wrapped")))]
+// Soroban Only (SEP-0041 and Staking not enabled) Feature imports
+
+#[cfg(all(feature = "sep-0041", not(feature = "staking")))]
 use crate::votes::SorobanOnly;
 
 #[contract]
 pub struct TokenVotes;
 
+#[cfg(feature = "sep-0041")]
 #[contractimpl]
 /// Implementation of the SEP-41 Token trait.
 impl Token for TokenVotes {
@@ -89,7 +94,7 @@ impl Token for TokenVotes {
         balance::burn_balance(&e, &from, amount);
 
         // burn underlying from the tokens held by this contract
-        #[cfg(feature = "wrapped")]
+        #[cfg(feature = "staking")]
         TokenClient::new(&e, &storage::get_token(&e)).burn(&e.current_contract_address(), &amount);
 
         TokenEvents::burn(&e, from, amount);
@@ -104,7 +109,7 @@ impl Token for TokenVotes {
         balance::burn_balance(&e, &from, amount);
 
         // burn underlying from the tokens held by this contract
-        #[cfg(feature = "wrapped")]
+        #[cfg(feature = "staking")]
         TokenClient::new(&e, &storage::get_token(&e)).burn(&e.current_contract_address(), &amount);
 
         TokenEvents::burn(&e, from, amount);
@@ -223,39 +228,10 @@ impl Votes for TokenVotes {
     }
 }
 
-#[cfg(feature = "admin")]
+#[cfg(feature = "staking")]
 #[contractimpl]
-impl Admin for TokenVotes {
-    fn mint(e: Env, to: Address, amount: i128) {
-        require_nonnegative_amount(&e, amount);
-        let admin = storage::get_admin(&e);
-        admin.require_auth();
-        storage::extend_instance(&e);
-
-        balance::mint_balance(&e, &to, amount);
-
-        TokenEvents::mint(&e, admin, to, amount);
-    }
-
-    fn set_admin(e: Env, new_admin: Address) {
-        let admin = storage::get_admin(&e);
-        admin.require_auth();
-        storage::extend_instance(&e);
-
-        storage::set_admin(&e, &new_admin);
-
-        TokenVotesEvents::set_admin(&e, admin, new_admin);
-    }
-
-    fn admin(e: Env) -> Address {
-        storage::get_admin(&e)
-    }
-}
-
-#[cfg(feature = "wrapped")]
-#[contractimpl]
-impl WrappedToken for TokenVotes {
-    fn initialize(e: Env, token: Address, governor: Address) {
+impl Staking for TokenVotes {
+    fn initialize(e: Env, token: Address, governor: Address, name: String, symbol: String) {
         if storage::get_is_init(&e) {
             panic_with_error!(e, TokenVotesError::AlreadyInitializedError);
         }
@@ -263,9 +239,6 @@ impl WrappedToken for TokenVotes {
 
         let underlying_token = TokenClient::new(&e, &token);
         let decimal = underlying_token.decimals();
-        let symbol = underlying_token.symbol();
-        let name = underlying_token.name();
-        // TODO: Come up with custom symbol and name for the token
         let token_metadata = TokenMetadata {
             decimal,
             name,
@@ -277,7 +250,8 @@ impl WrappedToken for TokenVotes {
         storage::set_is_init(&e);
     }
 
-    fn deposit_for(e: Env, from: Address, amount: i128) {
+    fn deposit(e: Env, from: Address, amount: i128) {
+        require_nonnegative_amount(&e, amount);
         from.require_auth();
         storage::extend_instance(&e);
 
@@ -289,7 +263,8 @@ impl WrappedToken for TokenVotes {
         TokenVotesEvents::deposit(&e, from, amount);
     }
 
-    fn withdraw_to(e: Env, from: Address, amount: i128) {
+    fn withdraw(e: Env, from: Address, amount: i128) {
+        require_nonnegative_amount(&e, amount);
         from.require_auth();
         storage::extend_instance(&e);
 
@@ -300,9 +275,48 @@ impl WrappedToken for TokenVotes {
 
         TokenVotesEvents::withdraw(&e, from, amount);
     }
+
+    fn claim(e: Env, address: Address) -> i128 {
+        address.require_auth();
+        let total_supply = storage::get_total_supply(&e).to_checkpoint_data().1;
+        let balance = storage::get_balance(&e, &address);
+        claim_emissions(&e, total_supply, &address, balance)
+    }
+
+    fn set_emis(e: Env, tokens: i128, expiration: u64) {
+        let governor = storage::get_governor(&e);
+        governor.require_auth();
+
+        let token = TokenClient::new(&e, &storage::get_token(&e));
+        token.transfer(&governor, &e.current_contract_address(), &tokens);
+
+        let total_supply = storage::get_total_supply(&e).to_checkpoint_data().1;
+        set_emissions(&e, total_supply, tokens, expiration);
+    }
+
+    #[cfg(not(feature = "sep-0041"))]
+    fn balance(e: Env, id: Address) -> i128 {
+        storage::extend_instance(&e);
+        storage::get_balance(&e, &id)
+    }
+
+    #[cfg(not(feature = "sep-0041"))]
+    fn decimals(e: Env) -> u32 {
+        storage::get_metadata(&e).decimal
+    }
+
+    #[cfg(not(feature = "sep-0041"))]
+    fn name(e: Env) -> String {
+        storage::get_metadata(&e).name
+    }
+
+    #[cfg(not(feature = "sep-0041"))]
+    fn symbol(e: Env) -> String {
+        storage::get_metadata(&e).symbol
+    }
 }
 
-#[cfg(all(feature = "admin", not(feature = "wrapped")))]
+#[cfg(all(feature = "sep-0041", not(feature = "staking")))]
 #[contractimpl]
 impl SorobanOnly for TokenVotes {
     fn initialize(
@@ -328,26 +342,29 @@ impl SorobanOnly for TokenVotes {
         storage::set_metadata(&e, &token_metadata);
         storage::set_is_init(&e);
     }
-}
 
-#[cfg(feature = "emissions")]
-#[contractimpl]
-impl Emissions for TokenVotes {
-    fn claim(e: Env, address: Address) -> i128 {
-        address.require_auth();
-        let total_supply = storage::get_total_supply(&e).to_checkpoint_data().1;
-        let balance = storage::get_balance(&e, &address);
-        claim_emissions(&e, total_supply, &address, balance)
+    fn mint(e: Env, to: Address, amount: i128) {
+        require_nonnegative_amount(&e, amount);
+        let admin = storage::get_admin(&e);
+        admin.require_auth();
+        storage::extend_instance(&e);
+
+        balance::mint_balance(&e, &to, amount);
+
+        TokenEvents::mint(&e, admin, to, amount);
     }
 
-    fn set_emis(e: Env, tokens: i128, expiration: u64) {
-        let governor = storage::get_governor(&e);
-        governor.require_auth();
+    fn set_admin(e: Env, new_admin: Address) {
+        let admin = storage::get_admin(&e);
+        admin.require_auth();
+        storage::extend_instance(&e);
 
-        let token = TokenClient::new(&e, &storage::get_token(&e));
-        token.transfer(&governor, &e.current_contract_address(), &tokens);
+        storage::set_admin(&e, &new_admin);
 
-        let total_supply = storage::get_total_supply(&e).to_checkpoint_data().1;
-        set_emissions(&e, total_supply, tokens, expiration);
+        TokenVotesEvents::set_admin(&e, admin, new_admin);
+    }
+
+    fn admin(e: Env) -> Address {
+        storage::get_admin(&e)
     }
 }

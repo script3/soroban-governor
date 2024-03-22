@@ -9,4 +9,4 @@ edition = "2021"
 soroban-sdk = { workspace = true, features = ["testutils"] }
 sep-41-token = { workspace = true, features = ["testutils"] }
 soroban-governor = { path = "../governor", features = ["testutils"] }
-soroban-votes = { path = "../votes", features = ["testutils", "wrapped", "emissions"] }
+soroban-votes = { path = "../votes", features = ["testutils", "staking"] }

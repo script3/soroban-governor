@@ -1,15 +1,15 @@
-use sep_41_token::testutils::MockTokenClient;
 #[cfg(test)]
+use sep_41_token::testutils::MockTokenClient;
 use soroban_governor::types::ProposalStatus;
 use soroban_governor::GovernorContractClient;
 use soroban_sdk::{
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, Events},
     vec, Address, Env, IntoVal, Symbol, TryIntoVal, Val,
 };
-use soroban_votes::TokenVotesClient;
 use tests::{
     env::EnvTestUtils,
     governor::{create_governor, default_governor_settings, default_proposal_data},
+    votes::StakingVotesClient,
 };
 
 #[test]
@@ -26,15 +26,16 @@ fn test_vote() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
-    let total_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &total_votes);
-    votes_client.deposit_for(&frodo, &total_votes);
-
+    let frodo_votes = 2_000 * 10i128.pow(7);
     let samwise_votes = 8_000 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &samwise, &samwise_votes);
+    token_client.mint(&frodo, &frodo_votes);
+    votes_client.deposit(&frodo, &frodo_votes);
+
+    token_client.mint(&samwise, &samwise_votes);
+    votes_client.deposit(&samwise, &samwise_votes);
 
     let (title, description, action) = default_proposal_data(&e);
 
@@ -108,15 +109,16 @@ fn test_vote_user_changes_support() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
-    let total_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &total_votes);
-    votes_client.deposit_for(&frodo, &total_votes);
-
+    let frodo_votes = 2_000 * 10i128.pow(7);
     let samwise_votes = 8_000 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &samwise, &samwise_votes);
+    token_client.mint(&frodo, &frodo_votes);
+    votes_client.deposit(&frodo, &frodo_votes);
+
+    token_client.mint(&samwise, &samwise_votes);
+    votes_client.deposit(&samwise, &samwise_votes);
 
     let (title, description, action) = default_proposal_data(&e);
 
@@ -157,21 +159,30 @@ fn test_vote_multiple_users() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
-    let total_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &total_votes);
-    votes_client.deposit_for(&frodo, &total_votes);
-
     let samwise_votes = 1_000 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &samwise, &samwise_votes);
     let pippin_votes = 500 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &pippin, &pippin_votes);
     let merry_votes = 1234567;
-    votes_client.transfer(&frodo, &merry, &merry_votes);
     let bilbo_votes = 2345 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &bilbo, &bilbo_votes);
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    let frodo_votes = total_votes - samwise_votes - pippin_votes - merry_votes - bilbo_votes;
+
+    token_client.mint(&frodo, &frodo_votes);
+    votes_client.deposit(&frodo, &frodo_votes);
+
+    token_client.mint(&samwise, &samwise_votes);
+    votes_client.deposit(&samwise, &samwise_votes);
+
+    token_client.mint(&pippin, &pippin_votes);
+    votes_client.deposit(&pippin, &pippin_votes);
+
+    token_client.mint(&merry, &merry_votes);
+    votes_client.deposit(&merry, &merry_votes);
+
+    token_client.mint(&bilbo, &bilbo_votes);
+    votes_client.deposit(&bilbo, &bilbo_votes);
 
     let (title, description, action) = default_proposal_data(&e);
 
@@ -217,15 +228,16 @@ fn test_vote_nonexistent_proposal() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
-    let total_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &total_votes);
-    votes_client.deposit_for(&frodo, &total_votes);
-
+    let frodo_votes = 2_000 * 10i128.pow(7);
     let samwise_votes = 8_000 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &samwise, &samwise_votes);
+    token_client.mint(&frodo, &frodo_votes);
+    votes_client.deposit(&frodo, &frodo_votes);
+
+    token_client.mint(&samwise, &samwise_votes);
+    votes_client.deposit(&samwise, &samwise_votes);
 
     let voter_support = 0;
     governor_client.vote(&samwise, &0, &voter_support);
@@ -245,15 +257,16 @@ fn test_vote_delay_not_ended() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
-    let total_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &total_votes);
-    votes_client.deposit_for(&frodo, &total_votes);
-
+    let frodo_votes = 2_000 * 10i128.pow(7);
     let samwise_votes = 8_000 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &samwise, &samwise_votes);
+    token_client.mint(&frodo, &frodo_votes);
+    votes_client.deposit(&frodo, &frodo_votes);
+
+    token_client.mint(&samwise, &samwise_votes);
+    votes_client.deposit(&samwise, &samwise_votes);
 
     let (title, description, action) = default_proposal_data(&e);
 
@@ -278,15 +291,16 @@ fn test_vote_period_ended() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
-    let total_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &total_votes);
-    votes_client.deposit_for(&frodo, &total_votes);
-
+    let frodo_votes = 2_000 * 10i128.pow(7);
     let samwise_votes = 8_000 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &samwise, &samwise_votes);
+    token_client.mint(&frodo, &frodo_votes);
+    votes_client.deposit(&frodo, &frodo_votes);
+
+    token_client.mint(&samwise, &samwise_votes);
+    votes_client.deposit(&samwise, &samwise_votes);
 
     let (title, description, action) = default_proposal_data(&e);
 
@@ -313,15 +327,16 @@ fn test_vote_invalid_support_option() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = TokenVotesClient::new(&e, &votes_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
-    let total_votes: i128 = 10_000 * 10i128.pow(7);
-    token_client.mint(&frodo, &total_votes);
-    votes_client.deposit_for(&frodo, &total_votes);
-
+    let frodo_votes = 2_000 * 10i128.pow(7);
     let samwise_votes = 8_000 * 10i128.pow(7);
-    votes_client.transfer(&frodo, &samwise, &samwise_votes);
+    token_client.mint(&frodo, &frodo_votes);
+    votes_client.deposit(&frodo, &frodo_votes);
+
+    token_client.mint(&samwise, &samwise_votes);
+    votes_client.deposit(&samwise, &samwise_votes);
 
     let (title, description, action) = default_proposal_data(&e);
 

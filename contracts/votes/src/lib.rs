@@ -3,14 +3,16 @@
 #[cfg(any(test, feature = "testutils"))]
 extern crate std;
 
+#[cfg(feature = "sep-0041")]
 mod allowance;
+
 mod balance;
 mod checkpoints;
 mod constants;
 mod contract;
 mod error;
 
-#[cfg(feature = "emissions")]
+#[cfg(feature = "staking")]
 mod emissions;
 
 mod events;
