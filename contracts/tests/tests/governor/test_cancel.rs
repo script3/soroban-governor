@@ -3,7 +3,7 @@ use sep_41_token::testutils::MockTokenClient;
 use soroban_governor::{types::ProposalStatus, GovernorContractClient};
 use soroban_sdk::{
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, Events},
-    vec, Address, Env, IntoVal, Symbol, TryIntoVal,
+    vec, Address, Env, Error, IntoVal, Symbol, TryIntoVal,
 };
 use tests::{
     env::EnvTestUtils,
@@ -222,4 +222,54 @@ fn test_cancel_unauthorized_address() {
     e.jump(settings.vote_delay / 2);
 
     governor_client.cancel(&bombadil, &proposal_id);
+}
+
+#[test]
+fn test_cancel_already_closed() {
+    let e = Env::default();
+    e.set_default_info();
+    e.mock_all_auths();
+
+    let bombadil = Address::generate(&e);
+    let frodo = Address::generate(&e);
+    let samwise = Address::generate(&e);
+    let pippin = Address::generate(&e);
+
+    let settings = default_governor_settings(&e);
+    let (governor_address, token_address, votes_address) =
+        create_governor(&e, &bombadil, &settings);
+    let token_client = MockTokenClient::new(&e, &token_address);
+    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let governor_client = GovernorContractClient::new(&e, &governor_address);
+
+    let samwise_votes = 105 * 10i128.pow(7);
+    let pippin_votes = 100 * 10i128.pow(7);
+    let total_votes: i128 = 10_000 * 10i128.pow(7);
+    let frodo_votes = total_votes - samwise_votes - pippin_votes;
+    token_client.mint(&frodo, &frodo_votes);
+    votes_client.deposit(&frodo, &frodo_votes);
+
+    token_client.mint(&samwise, &samwise_votes);
+    votes_client.deposit(&samwise, &samwise_votes);
+
+    token_client.mint(&pippin, &pippin_votes);
+    votes_client.deposit(&pippin, &pippin_votes);
+
+    let (title, description, action) = default_proposal_data(&e);
+
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
+    e.jump(settings.vote_delay + 1);
+    governor_client.vote(&samwise, &proposal_id, &1);
+    governor_client.vote(&pippin, &proposal_id, &0);
+    e.jump(settings.vote_period);
+
+    // close
+    governor_client.close(&proposal_id);
+
+    let proposal = governor_client.get_proposal(&proposal_id).unwrap();
+    assert_eq!(proposal.data.status, ProposalStatus::Successful);
+
+    // cancel
+    let result = governor_client.try_cancel(&samwise, &proposal_id);
+    assert_eq!(result.err(), Some(Ok(Error::from_contract_error(202))));
 }

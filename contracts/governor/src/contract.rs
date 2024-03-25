@@ -115,6 +115,10 @@ impl Governor for GovernorContract {
         let mut proposal_data = storage::get_proposal_data(&e, proposal_id)
             .unwrap_or_else(|| panic_with_error!(&e, GovernorError::NonExistentProposalError));
 
+        if proposal_data.status != ProposalStatus::Open {
+            panic_with_error!(&e, GovernorError::ProposalClosedError);
+        }
+
         if e.ledger().sequence() <= proposal_data.vote_end {
             panic_with_error!(&e, GovernorError::VotePeriodNotFinishedError)
         }
@@ -200,6 +204,9 @@ impl Governor for GovernorContract {
             }
         }
 
+        if proposal_data.status != ProposalStatus::Open {
+            panic_with_error!(&e, GovernorError::ProposalClosedError);
+        }
         if proposal_data.vote_start <= e.ledger().sequence() {
             panic_with_error!(&e, GovernorError::ProposalVotePeriodStartedError);
         }
