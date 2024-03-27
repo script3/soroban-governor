@@ -345,7 +345,8 @@ fn test_execute_upgrade() {
     let bombadil = Address::generate(&e);
     let frodo = Address::generate(&e);
 
-    let settings = default_governor_settings(&e);
+    let mut settings = default_governor_settings(&e);
+    settings.council = frodo.clone();
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
