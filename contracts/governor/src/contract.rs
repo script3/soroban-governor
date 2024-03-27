@@ -50,6 +50,14 @@ impl Governor for GovernorContract {
         }
 
         let settings = storage::get_settings(&e);
+        match action {
+            ProposalAction::Upgrade(_) => {
+                if creator != settings.council {
+                    panic_with_error!(&e, GovernorError::UnauthorizedError);
+                }
+            }
+            _ => {}
+        };
         let votes_client = VotesClient::new(&e, &storage::get_voter_token_address(&e));
         let creater_votes = votes_client.get_votes(&creator);
         if creater_votes < settings.proposal_threshold {
