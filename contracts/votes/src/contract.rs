@@ -22,19 +22,19 @@ use sep_41_token::{Token, TokenEvents};
 #[cfg(feature = "sep-0041")]
 use crate::allowance::{create_allowance, spend_allowance};
 
-// Staking Feature imports
+// Bonding Feature imports
 
-#[cfg(feature = "staking")]
+#[cfg(feature = "bonding")]
 use crate::{
     emissions::{claim_emissions, set_emissions},
-    votes::Staking,
+    votes::Bonding,
 };
-#[cfg(feature = "staking")]
+#[cfg(feature = "bonding")]
 use soroban_sdk::token::TokenClient;
 
-// Soroban Only (SEP-0041 and Staking not enabled) Feature imports
+// Soroban Only (SEP-0041 and Bonding not enabled) Feature imports
 
-#[cfg(all(feature = "sep-0041", not(feature = "staking")))]
+#[cfg(all(feature = "sep-0041", not(feature = "bonding")))]
 use crate::votes::SorobanOnly;
 
 #[contract]
@@ -94,7 +94,7 @@ impl Token for TokenVotes {
         balance::burn_balance(&e, &from, amount);
 
         // burn underlying from the tokens held by this contract
-        #[cfg(feature = "staking")]
+        #[cfg(feature = "bonding")]
         TokenClient::new(&e, &storage::get_token(&e)).burn(&e.current_contract_address(), &amount);
 
         TokenEvents::burn(&e, from, amount);
@@ -109,7 +109,7 @@ impl Token for TokenVotes {
         balance::burn_balance(&e, &from, amount);
 
         // burn underlying from the tokens held by this contract
-        #[cfg(feature = "staking")]
+        #[cfg(feature = "bonding")]
         TokenClient::new(&e, &storage::get_token(&e)).burn(&e.current_contract_address(), &amount);
 
         TokenEvents::burn(&e, from, amount);
@@ -228,9 +228,9 @@ impl Votes for TokenVotes {
     }
 }
 
-#[cfg(feature = "staking")]
+#[cfg(feature = "bonding")]
 #[contractimpl]
-impl Staking for TokenVotes {
+impl Bonding for TokenVotes {
     fn initialize(e: Env, token: Address, governor: Address, name: String, symbol: String) {
         if storage::get_is_init(&e) {
             panic_with_error!(e, TokenVotesError::AlreadyInitializedError);
@@ -316,7 +316,7 @@ impl Staking for TokenVotes {
     }
 }
 
-#[cfg(all(feature = "sep-0041", not(feature = "staking")))]
+#[cfg(all(feature = "sep-0041", not(feature = "bonding")))]
 #[contractimpl]
 impl SorobanOnly for TokenVotes {
     fn initialize(

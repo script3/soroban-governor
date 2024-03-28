@@ -12,7 +12,7 @@ doctest = false
 
 [features]
 testutils = ["soroban-sdk/testutils"]
-staking = []
+bonding = []
 sep-0041 = []
 
 [dependencies]

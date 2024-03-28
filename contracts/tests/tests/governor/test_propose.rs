@@ -9,7 +9,7 @@ use soroban_sdk::{
 use tests::{
     env::EnvTestUtils,
     governor::{create_governor, default_governor_settings, default_proposal_data},
-    votes::StakingVotesClient,
+    votes::BondingVotesClient,
 };
 
 #[test]
@@ -23,7 +23,7 @@ fn test_propose_calldata() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_mint_amount: i128 = 10_000_000;
@@ -143,7 +143,7 @@ fn test_propose_calldata_validates() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_mint_amount: i128 = 10_000_000;
@@ -173,7 +173,7 @@ fn test_propose_with_active_proposal() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_mint_amount: i128 = 10_000_000;
@@ -209,7 +209,7 @@ fn test_propose_snapshot() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_mint_amount: i128 = 10_000_000;
@@ -245,7 +245,7 @@ fn test_propose_upgrade() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_mint_amount: i128 = 10_000_000;
@@ -286,7 +286,7 @@ fn test_propose_settings() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_mint_amount: i128 = 10_000_000;
@@ -329,7 +329,7 @@ fn test_propose_settings_validates() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_mint_amount: i128 = 10_000_000;
@@ -360,7 +360,7 @@ fn test_propose_below_proposal_threshold() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_mint_amount: i128 = 999_999;

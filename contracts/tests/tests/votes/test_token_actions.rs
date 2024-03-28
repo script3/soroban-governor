@@ -7,7 +7,7 @@ use soroban_sdk::{
 use tests::{
     common::create_stellar_token,
     env::EnvTestUtils,
-    votes::{create_soroban_token_votes_wasm, create_staking_token_votes},
+    votes::{create_bonding_token_votes, create_soroban_token_votes_wasm},
 };
 
 #[test]
@@ -21,7 +21,7 @@ fn initialize_already_initialized() {
     let governor = Address::generate(&e);
 
     let (token_id, _) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_staking_token_votes(&e, &token_id, &governor);
+    let (_, votes_client) = create_bonding_token_votes(&e, &token_id, &governor);
 
     votes_client.initialize(
         &Address::generate(&e),

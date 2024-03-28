@@ -8,24 +8,24 @@ mod token_votes_wasm {
 }
 pub use token_votes_wasm::Client as SorobanVotesClient;
 
-mod staking_token_votes_wasm {
+mod bonding_token_votes_wasm {
     soroban_sdk::contractimport!(
-        file = "../../target/wasm32-unknown-unknown/optimized/soroban_votes_staking.wasm"
+        file = "../../target/wasm32-unknown-unknown/optimized/soroban_votes_bonding.wasm"
     );
 }
-pub use staking_token_votes_wasm::Client as StakingVotesClient;
+pub use bonding_token_votes_wasm::Client as BondingVotesClient;
 
 /// Create a voting token contract for an underyling token
 ///
 /// ### Arguments
 /// * `token` - The underlying token address
-pub fn create_staking_token_votes<'a>(
+pub fn create_bonding_token_votes<'a>(
     e: &Env,
     token: &Address,
     governor: &Address,
-) -> (Address, StakingVotesClient<'a>) {
+) -> (Address, BondingVotesClient<'a>) {
     let vote_token_id = e.register_contract(None, TokenVotes {});
-    let vote_token_client = StakingVotesClient::new(e, &vote_token_id);
+    let vote_token_client = BondingVotesClient::new(e, &vote_token_id);
     vote_token_client.initialize(
         &token,
         &governor,
@@ -39,13 +39,13 @@ pub fn create_staking_token_votes<'a>(
 ///
 /// ### Arguments
 /// * `token` - The underlying token address
-pub fn create_staking_token_votes_wasm<'a>(
+pub fn create_bonding_token_votes_wasm<'a>(
     e: &Env,
     token: &Address,
     governor: &Address,
-) -> (Address, StakingVotesClient<'a>) {
-    let vote_token_id = e.register_contract_wasm(None, staking_token_votes_wasm::WASM);
-    let vote_token_client = StakingVotesClient::new(e, &vote_token_id);
+) -> (Address, BondingVotesClient<'a>) {
+    let vote_token_id = e.register_contract_wasm(None, bonding_token_votes_wasm::WASM);
+    let vote_token_client = BondingVotesClient::new(e, &vote_token_id);
     vote_token_client.initialize(
         &token,
         &governor,

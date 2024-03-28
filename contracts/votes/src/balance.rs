@@ -6,7 +6,7 @@ use crate::{
 };
 use soroban_sdk::{panic_with_error, Address, Env};
 
-#[cfg(feature = "staking")]
+#[cfg(feature = "bonding")]
 use crate::emissions;
 
 /// Add tokens to an address's balance and update emissions and voting power
@@ -23,7 +23,7 @@ pub fn mint_balance(e: &Env, to: &Address, amount: i128) {
         let total_supply_checkpoint = storage::get_total_supply(e);
         let (_, mut supply) = total_supply_checkpoint.to_checkpoint_data();
 
-        #[cfg(feature = "staking")]
+        #[cfg(feature = "bonding")]
         emissions::update_emissions(e, supply, to, balance);
 
         supply = supply
@@ -65,7 +65,7 @@ pub fn burn_balance(e: &Env, from: &Address, amount: i128) {
     let total_supply_checkpoint = storage::get_total_supply(e);
     let (_, mut supply) = total_supply_checkpoint.to_checkpoint_data();
 
-    #[cfg(feature = "staking")]
+    #[cfg(feature = "bonding")]
     emissions::update_emissions(e, supply, from, balance);
 
     supply -= amount;
@@ -98,7 +98,7 @@ pub fn transfer_balance(e: &Env, from: &Address, to: &Address, amount: i128) {
     }
     let to_balance = storage::get_balance(e, to);
 
-    #[cfg(feature = "staking")]
+    #[cfg(feature = "bonding")]
     {
         let total_supply_checkpoint = storage::get_total_supply(e);
         let (_, supply) = total_supply_checkpoint.to_checkpoint_data();

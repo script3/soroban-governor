@@ -4,7 +4,7 @@ use soroban_sdk::{
     vec, Address, Env, IntoVal, Symbol,
 };
 use tests::{
-    common::create_stellar_token, env::EnvTestUtils, votes::create_staking_token_votes_wasm,
+    common::create_stellar_token, env::EnvTestUtils, votes::create_bonding_token_votes_wasm,
 };
 
 #[test]
@@ -19,7 +19,7 @@ fn test_emissions() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (votes_id, votes_client) = create_staking_token_votes_wasm(&e, &token_id, &governor);
+    let (votes_id, votes_client) = create_bonding_token_votes_wasm(&e, &token_id, &governor);
 
     let mut balance_samwise = 0;
     let mut balance_frodo = 0;

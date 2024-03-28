@@ -53,9 +53,9 @@ pub trait Votes {
     fn delegate(e: Env, account: Address, delegatee: Address);
 }
 
-#[cfg(feature = "staking")]
-pub trait Staking {
-    /// Setup the votes contract
+#[cfg(feature = "bonding")]
+pub trait Bonding {
+    /// Setup the bonding votes contract
     ///
     /// ### Arguments
     /// * `token` - The address of the underlying token contract
@@ -117,7 +117,7 @@ pub trait Staking {
     fn symbol(env: Env) -> String;
 }
 
-#[cfg(all(feature = "sep-0041", not(feature = "staking")))]
+#[cfg(all(feature = "sep-0041", not(feature = "bonding")))]
 pub trait SorobanOnly {
     /// Setup the votes contract
     ///

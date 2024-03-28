@@ -9,7 +9,7 @@ use soroban_sdk::{
 use tests::{
     env::EnvTestUtils,
     governor::{create_governor, default_governor_settings, default_proposal_data},
-    votes::StakingVotesClient,
+    votes::BondingVotesClient,
 };
 
 #[test]
@@ -27,7 +27,7 @@ fn test_close_successful() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_votes = 105 * 10i128.pow(7);
@@ -103,7 +103,7 @@ fn test_close_defeated_quorum_not_met() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_votes = 99 * 10i128.pow(7); // quorum is 1%
@@ -175,7 +175,7 @@ fn test_close_defeated_threshold_not_met() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_votes = 200 * 10i128.pow(7);
@@ -248,7 +248,7 @@ fn test_close_expired() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_votes = 105 * 10i128.pow(7);
@@ -325,7 +325,7 @@ fn test_close_tracks_quorum_with_counting_type() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_votes = 50 * 10i128.pow(7);
@@ -377,7 +377,7 @@ fn test_close_successful_non_executable() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_votes = 105 * 10i128.pow(7);
@@ -423,7 +423,7 @@ fn test_close_nonexistent_proposal() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_mint_amount: i128 = 10_000_000;
@@ -449,7 +449,7 @@ fn test_close_vote_period_unfinished() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_mint_amount: i128 = 10_000_000;
@@ -481,7 +481,7 @@ fn test_close_already_closed() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_votes = 105 * 10i128.pow(7);
