@@ -3,7 +3,7 @@ use soroban_sdk::{testutils::Address as _, Address, Env, Error};
 use tests::{
     common::create_stellar_token,
     env::EnvTestUtils,
-    votes::{create_soroban_token_votes_wasm, create_staking_token_votes},
+    votes::{create_bonding_token_votes, create_soroban_token_votes_wasm},
     ONE_DAY_LEDGERS,
 };
 
@@ -20,7 +20,7 @@ fn test_get_past() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_staking_token_votes(&e, &token_id, &governor);
+    let (_, votes_client) = create_bonding_token_votes(&e, &token_id, &governor);
 
     // setup vote ledgers - do a ledger before each action to verify the actions
     // occuring after the vote starts are recorded properly
@@ -172,7 +172,7 @@ fn test_get_past_same_sequence_as_ledger() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_staking_token_votes(&e, &token_id, &governor);
+    let (_, votes_client) = create_bonding_token_votes(&e, &token_id, &governor);
 
     let cur_ledger = e.ledger().sequence();
     votes_client.set_vote_sequence(&(cur_ledger + 99));

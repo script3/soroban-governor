@@ -9,7 +9,7 @@ use soroban_sdk::{
 use tests::{
     env::EnvTestUtils,
     governor::{create_governor, default_governor_settings, default_proposal_data},
-    votes::StakingVotesClient,
+    votes::BondingVotesClient,
 };
 
 #[test]
@@ -26,7 +26,7 @@ fn test_vote() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let frodo_votes = 2_000 * 10i128.pow(7);
@@ -109,7 +109,7 @@ fn test_vote_user_changes_support() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let frodo_votes = 2_000 * 10i128.pow(7);
@@ -159,7 +159,7 @@ fn test_vote_multiple_users() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let samwise_votes = 1_000 * 10i128.pow(7);
@@ -228,7 +228,7 @@ fn test_vote_nonexistent_proposal() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let frodo_votes = 2_000 * 10i128.pow(7);
@@ -257,7 +257,7 @@ fn test_vote_delay_not_ended() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let frodo_votes = 2_000 * 10i128.pow(7);
@@ -291,7 +291,7 @@ fn test_vote_period_ended() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let frodo_votes = 2_000 * 10i128.pow(7);
@@ -327,7 +327,7 @@ fn test_vote_invalid_support_option() {
     let (governor_address, token_address, votes_address) =
         create_governor(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     let frodo_votes = 2_000 * 10i128.pow(7);

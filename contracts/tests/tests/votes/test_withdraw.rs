@@ -3,7 +3,7 @@ use soroban_sdk::{
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, Events},
     vec, Address, Env, IntoVal, Symbol, Val,
 };
-use tests::{common::create_stellar_token, env::EnvTestUtils, votes::create_staking_token_votes};
+use tests::{common::create_stellar_token, env::EnvTestUtils, votes::create_bonding_token_votes};
 
 #[test]
 fn test_withdraw() {
@@ -16,7 +16,7 @@ fn test_withdraw() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (votes_id, votes_client) = create_staking_token_votes(&e, &token_id, &governor);
+    let (votes_id, votes_client) = create_bonding_token_votes(&e, &token_id, &governor);
 
     votes_client.set_vote_sequence(&(e.ledger().sequence() + 1000 - 1));
 
@@ -114,7 +114,7 @@ fn test_withdraw_full_balance() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (votes_id, votes_client) = create_staking_token_votes(&e, &token_id, &governor);
+    let (votes_id, votes_client) = create_bonding_token_votes(&e, &token_id, &governor);
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&samwise, &initial_balance);
@@ -145,7 +145,7 @@ fn test_withdraw_negative_amount() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_staking_token_votes(&e, &token_id, &governor);
+    let (_, votes_client) = create_bonding_token_votes(&e, &token_id, &governor);
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&samwise, &initial_balance);
@@ -171,7 +171,7 @@ fn test_withdraw_more_than_balance() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_staking_token_votes(&e, &token_id, &governor);
+    let (_, votes_client) = create_bonding_token_votes(&e, &token_id, &governor);
 
     let initial_balance = 100_000 * 10i128.pow(7);
     token_client.mint(&samwise, &initial_balance);

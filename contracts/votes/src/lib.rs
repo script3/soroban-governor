@@ -12,7 +12,7 @@ mod constants;
 mod contract;
 mod error;
 
-#[cfg(feature = "staking")]
+#[cfg(feature = "bonding")]
 mod emissions;
 
 mod events;

@@ -6,7 +6,7 @@ use soroban_sdk::{
 use tests::{
     common::create_stellar_token,
     env::EnvTestUtils,
-    votes::{create_soroban_token_votes_wasm, create_staking_token_votes},
+    votes::{create_bonding_token_votes, create_soroban_token_votes_wasm},
 };
 
 #[test]
@@ -21,7 +21,7 @@ fn test_delegation() {
     let governor = Address::generate(&e);
 
     let (token_id, token_client) = create_stellar_token(&e, &bombadil);
-    let (votes_id, votes_client) = create_staking_token_votes(&e, &token_id, &governor);
+    let (votes_id, votes_client) = create_bonding_token_votes(&e, &token_id, &governor);
 
     votes_client.set_vote_sequence(&(e.ledger().sequence() + 100 - 1));
 
@@ -264,7 +264,7 @@ fn test_delegation_to_current_delegate() {
     let governor = Address::generate(&e);
 
     let (token_id, _) = create_stellar_token(&e, &bombadil);
-    let (_, votes_client) = create_staking_token_votes(&e, &token_id, &governor);
+    let (_, votes_client) = create_bonding_token_votes(&e, &token_id, &governor);
 
     votes_client.delegate(&samwise, &frodo);
 

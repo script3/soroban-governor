@@ -7,5 +7,5 @@ pub(crate) const MAX_CHECKPOINT_AGE_LEDGERS: u32 = 8 * ONE_DAY_LEDGERS;
 /// The maximum number of ledgers a proposal can exist for.
 pub(crate) const MAX_PROPOSAL_AGE_LEDGERS: u32 = 31 * ONE_DAY_LEDGERS;
 
-#[cfg(feature = "staking")]
+#[cfg(feature = "bonding")]
 pub(crate) const SCALAR_7: i128 = 1_0000000;

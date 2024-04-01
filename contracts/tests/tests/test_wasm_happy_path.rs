@@ -9,7 +9,7 @@ use tests::{
     env::EnvTestUtils,
     governor::{create_governor_wasm, default_governor_settings, default_proposal_data},
     mocks::create_mock_subcall_contract_wasm,
-    votes::{SorobanVotesClient, StakingVotesClient},
+    votes::{BondingVotesClient, SorobanVotesClient},
 };
 
 const ONE_HOUR: u32 = 60 * 60 / 5;
@@ -31,7 +31,7 @@ fn test_wasm_happy_path() {
     let (governor_address, token_address, votes_address) =
         create_governor_wasm(&e, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
-    let votes_client = StakingVotesClient::new(&e, &votes_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
     let (subcall_address, _) =
         create_mock_subcall_contract_wasm(&e, &token_address, &governor_address);

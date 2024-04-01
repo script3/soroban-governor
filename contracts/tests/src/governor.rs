@@ -27,7 +27,7 @@ pub fn create_governor<'a>(
     let governor_address = e.register_contract(None, GovernorContract {});
     let (underlying_token, _) = common::create_stellar_token(e, admin);
     let (vote_address, _) =
-        votes::create_staking_token_votes(e, &underlying_token, &governor_address);
+        votes::create_bonding_token_votes(e, &underlying_token, &governor_address);
     let govenor_client: GovernorContractClient<'a> =
         GovernorContractClient::new(&e, &governor_address);
     govenor_client.initialize(&vote_address, settings);
@@ -49,7 +49,7 @@ pub fn create_governor_wasm<'a>(
     let governor_address = e.register_contract_wasm(None, governor_contract_wasm::WASM);
     let (underlying_token, _) = common::create_stellar_token(e, admin);
     let (vote_address, _) =
-        votes::create_staking_token_votes_wasm(e, &underlying_token, &governor_address);
+        votes::create_bonding_token_votes_wasm(e, &underlying_token, &governor_address);
     let govenor_client: GovernorContractClient<'a> =
         GovernorContractClient::new(&e, &governor_address);
     govenor_client.initialize(&vote_address, settings);

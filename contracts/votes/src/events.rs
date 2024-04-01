@@ -23,13 +23,13 @@ impl TokenVotesEvents {
         e.events().publish(topics, (old_votes, new_votes));
     }
 
-    #[cfg(all(feature = "sep-0041", not(feature = "staking")))]
+    #[cfg(all(feature = "sep-0041", not(feature = "bonding")))]
     pub fn set_admin(e: &Env, admin: Address, new_admin: Address) {
         let topics = (Symbol::new(e, "set_admin"), admin);
         e.events().publish(topics, new_admin);
     }
 
-    #[cfg(feature = "staking")]
+    #[cfg(feature = "bonding")]
     /// Emitted when an account deposits tokens into the votes contract
     ///
     /// - topics - `["deposit", account: Address]`
@@ -39,7 +39,7 @@ impl TokenVotesEvents {
         e.events().publish(topics, amount);
     }
 
-    #[cfg(feature = "staking")]
+    #[cfg(feature = "bonding")]
     /// Emitted when an account withdraws tokens from the votes contract
     ///
     /// - topics - `["withdraw", account: Address]`
@@ -49,7 +49,7 @@ impl TokenVotesEvents {
         e.events().publish(topics, amount);
     }
 
-    #[cfg(feature = "staking")]
+    #[cfg(feature = "bonding")]
     /// Emitted when an account claims emissions
     ///
     /// - topics - `["claim", account: Address]`
@@ -59,7 +59,7 @@ impl TokenVotesEvents {
         e.events().publish(topics, amount);
     }
 
-    #[cfg(feature = "staking")]
+    #[cfg(feature = "bonding")]
     /// Emitted when a new emission configuration is set
     ///
     /// - topics - `["set_emissions", eps: u64, expiration: u64]`
