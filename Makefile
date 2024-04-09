@@ -6,6 +6,12 @@ test: build
 build:
 	mkdir -p target/wasm32-unknown-unknown/optimized
 
+	cargo rustc --manifest-path=contracts/votes/Cargo.toml --crate-type=cdylib --target=wasm32-unknown-unknown --release --features soroban-votes/clawback
+	soroban contract optimize \
+		--wasm target/wasm32-unknown-unknown/release/soroban_votes.wasm \
+		--wasm-out target/wasm32-unknown-unknown/optimized/soroban_admin_votes.wasm
+
+
 	cargo rustc --manifest-path=contracts/votes/Cargo.toml --crate-type=cdylib --target=wasm32-unknown-unknown --release --features soroban-votes/sep-0041
 	soroban contract optimize \
 		--wasm target/wasm32-unknown-unknown/release/soroban_votes.wasm \

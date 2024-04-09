@@ -16,8 +16,11 @@ use crate::{
 
 // SEP-0041 Feature imports
 
+#[cfg(any(feature = "sep-0041", not(feature = "bonding")))]
+use sep_41_token::TokenEvents;
+
 #[cfg(feature = "sep-0041")]
-use sep_41_token::{Token, TokenEvents};
+use sep_41_token::Token;
 
 #[cfg(feature = "sep-0041")]
 use crate::allowance::{create_allowance, spend_allowance};
@@ -34,9 +37,10 @@ use soroban_sdk::token::TokenClient;
 
 // Soroban Only (SEP-0041 and Bonding not enabled) Feature imports
 
-#[cfg(all(feature = "sep-0041", not(feature = "bonding")))]
-use crate::votes::SorobanOnly;
-
+#[cfg(not(feature = "bonding"))]
+use crate::votes::Admin;
+#[cfg(not(feature = "bonding"))]
+use soroban_sdk::Symbol;
 #[contract]
 pub struct TokenVotes;
 
@@ -85,7 +89,6 @@ impl Token for TokenVotes {
         TokenEvents::transfer(&e, from, to, amount);
     }
 
-    // TODO: Consider making these functions a no-op?
     fn burn(e: Env, from: Address, amount: i128) {
         from.require_auth();
         require_nonnegative_amount(&e, amount);
@@ -316,9 +319,9 @@ impl Bonding for TokenVotes {
     }
 }
 
-#[cfg(all(feature = "sep-0041", not(feature = "bonding")))]
+#[cfg(not(feature = "bonding"))]
 #[contractimpl]
-impl SorobanOnly for TokenVotes {
+impl Admin for TokenVotes {
     fn initialize(
         e: Env,
         admin: Address,
@@ -354,6 +357,19 @@ impl SorobanOnly for TokenVotes {
         TokenEvents::mint(&e, admin, to, amount);
     }
 
+    #[cfg(feature = "clawback")]
+    fn clawback(e: Env, from: Address, amount: i128) {
+        require_nonnegative_amount(&e, amount);
+        let admin = storage::get_admin(&e);
+        admin.require_auth();
+        storage::extend_instance(&e);
+
+        balance::burn_balance(&e, &from, amount);
+
+        let topics = (Symbol::new(&e, "clawback"), from);
+        e.events().publish(topics, amount);
+    }
+
     fn set_admin(e: Env, new_admin: Address) {
         let admin = storage::get_admin(&e);
         admin.require_auth();
@@ -366,5 +382,11 @@ impl SorobanOnly for TokenVotes {
 
     fn admin(e: Env) -> Address {
         storage::get_admin(&e)
+    }
+
+    #[cfg(not(feature = "sep-0041"))]
+    fn balance(e: Env, id: Address) -> i128 {
+        storage::extend_instance(&e);
+        storage::get_balance(&e, &id)
     }
 }
