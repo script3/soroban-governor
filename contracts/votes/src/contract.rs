@@ -35,12 +35,18 @@ use crate::{
 #[cfg(feature = "bonding")]
 use soroban_sdk::token::TokenClient;
 
-// Soroban Only (SEP-0041 and Bonding not enabled) Feature imports
+// Admin (Bonding not enabled) Feature imports
 
 #[cfg(not(feature = "bonding"))]
 use crate::votes::Admin;
 #[cfg(not(feature = "bonding"))]
 use soroban_sdk::Symbol;
+
+// Token Data Feature imports (SEP-0041 not enabled)
+
+#[cfg(not(feature = "sep-0041"))]
+use crate::votes::TokenData;
+
 #[contract]
 pub struct TokenVotes;
 
@@ -296,27 +302,6 @@ impl Bonding for TokenVotes {
         let total_supply = storage::get_total_supply(&e).to_checkpoint_data().1;
         set_emissions(&e, total_supply, tokens, expiration);
     }
-
-    #[cfg(not(feature = "sep-0041"))]
-    fn balance(e: Env, id: Address) -> i128 {
-        storage::extend_instance(&e);
-        storage::get_balance(&e, &id)
-    }
-
-    #[cfg(not(feature = "sep-0041"))]
-    fn decimals(e: Env) -> u32 {
-        storage::get_metadata(&e).decimal
-    }
-
-    #[cfg(not(feature = "sep-0041"))]
-    fn name(e: Env) -> String {
-        storage::get_metadata(&e).name
-    }
-
-    #[cfg(not(feature = "sep-0041"))]
-    fn symbol(e: Env) -> String {
-        storage::get_metadata(&e).symbol
-    }
 }
 
 #[cfg(not(feature = "bonding"))]
@@ -383,10 +368,25 @@ impl Admin for TokenVotes {
     fn admin(e: Env) -> Address {
         storage::get_admin(&e)
     }
+}
 
-    #[cfg(not(feature = "sep-0041"))]
+#[cfg(not(feature = "sep-0041"))]
+#[contractimpl]
+impl TokenData for TokenVotes {
     fn balance(e: Env, id: Address) -> i128 {
         storage::extend_instance(&e);
         storage::get_balance(&e, &id)
+    }
+
+    fn decimals(e: Env) -> u32 {
+        storage::get_metadata(&e).decimal
+    }
+
+    fn name(e: Env) -> String {
+        storage::get_metadata(&e).name
+    }
+
+    fn symbol(e: Env) -> String {
+        storage::get_metadata(&e).symbol
     }
 }

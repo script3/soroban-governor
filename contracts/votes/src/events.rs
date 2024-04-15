@@ -23,7 +23,7 @@ impl TokenVotesEvents {
         e.events().publish(topics, (old_votes, new_votes));
     }
 
-    #[cfg(all(feature = "sep-0041", not(feature = "bonding")))]
+    #[cfg(not(feature = "bonding"))]
     pub fn set_admin(e: &Env, admin: Address, new_admin: Address) {
         let topics = (Symbol::new(e, "set_admin"), admin);
         e.events().publish(topics, new_admin);

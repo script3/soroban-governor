@@ -94,27 +94,6 @@ pub trait Bonding {
     /// * `tokens` - The number of new tokens to emit
     /// * `expiration` - When to stop emitting tokens
     fn set_emis(e: Env, tokens: i128, expiration: u64);
-
-    #[cfg(not(feature = "sep-0041"))]
-    /// Returns the balance of `id`.
-    ///
-    /// # Arguments
-    ///
-    /// - `id` - The address for which a balance is being queried. If the
-    /// address has no existing balance, returns 0.
-    fn balance(env: Env, id: Address) -> i128;
-
-    #[cfg(not(feature = "sep-0041"))]
-    /// Returns the number of decimals used to represent amounts of this token.
-    fn decimals(env: Env) -> u32;
-
-    #[cfg(not(feature = "sep-0041"))]
-    /// Returns the name for this token.
-    fn name(env: Env) -> String;
-
-    #[cfg(not(feature = "sep-0041"))]
-    /// Returns the symbol for this token.
-    fn symbol(env: Env) -> String;
 }
 
 #[cfg(not(feature = "bonding"))]
@@ -159,8 +138,10 @@ pub trait Admin {
 
     /// Get the admin of the token
     fn admin(e: Env) -> Address;
+}
 
-    #[cfg(not(feature = "sep-0041"))]
+#[cfg(not(feature = "sep-0041"))]
+pub trait TokenData {
     /// Returns the balance of `id`.
     ///
     /// # Arguments
@@ -168,4 +149,13 @@ pub trait Admin {
     /// - `id` - The address for which a balance is being queried. If the
     /// address has no existing balance, returns 0.
     fn balance(env: Env, id: Address) -> i128;
+
+    /// Returns the number of decimals used to represent amounts of this token.
+    fn decimals(env: Env) -> u32;
+
+    /// Returns the name for this token.
+    fn name(env: Env) -> String;
+
+    /// Returns the symbol for this token.
+    fn symbol(env: Env) -> String;
 }
