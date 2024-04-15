@@ -76,6 +76,26 @@ pub fn create_soroban_governor_wasm<'a>(
     return (governor_address, vote_address);
 }
 
+/// Create a governor contract with the wasm contract and a soroban admin vote token
+///
+/// Returns (governor, vote_token, vote_token)
+///
+/// ### Arguments
+/// * `admin` - The address of the admin
+/// * `settings` - The settings for the governor
+pub fn create_soroban_admin_governor_wasm<'a>(
+    e: &Env,
+    admin: &Address,
+    settings: &GovernorSettings,
+) -> (Address, Address) {
+    let governor_address = e.register_contract_wasm(None, governor_contract_wasm::WASM);
+    let (vote_address, _) = votes::create_soroban_admin_votes_wasm(e, &admin, &governor_address);
+    let govenor_client: GovernorContractClient<'a> =
+        GovernorContractClient::new(&e, &governor_address);
+    govenor_client.initialize(&vote_address, settings);
+    return (governor_address, vote_address);
+}
+
 /// Default governor settings
 pub fn default_governor_settings(e: &Env) -> GovernorSettings {
     GovernorSettings {

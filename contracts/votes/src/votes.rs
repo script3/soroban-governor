@@ -94,31 +94,10 @@ pub trait Bonding {
     /// * `tokens` - The number of new tokens to emit
     /// * `expiration` - When to stop emitting tokens
     fn set_emis(e: Env, tokens: i128, expiration: u64);
-
-    #[cfg(not(feature = "sep-0041"))]
-    /// Returns the balance of `id`.
-    ///
-    /// # Arguments
-    ///
-    /// - `id` - The address for which a balance is being queried. If the
-    /// address has no existing balance, returns 0.
-    fn balance(env: Env, id: Address) -> i128;
-
-    #[cfg(not(feature = "sep-0041"))]
-    /// Returns the number of decimals used to represent amounts of this token.
-    fn decimals(env: Env) -> u32;
-
-    #[cfg(not(feature = "sep-0041"))]
-    /// Returns the name for this token.
-    fn name(env: Env) -> String;
-
-    #[cfg(not(feature = "sep-0041"))]
-    /// Returns the symbol for this token.
-    fn symbol(env: Env) -> String;
 }
 
-#[cfg(all(feature = "sep-0041", not(feature = "bonding")))]
-pub trait SorobanOnly {
+#[cfg(not(feature = "bonding"))]
+pub trait Admin {
     /// Setup the votes contract
     ///
     /// ### Arguments
@@ -143,6 +122,14 @@ pub trait SorobanOnly {
     /// * `amount` - The amount of underlying tokens to deposit
     fn mint(e: Env, to: Address, amount: i128);
 
+    /// (Admin only) Burn tokens from an address
+    ///
+    /// ### Arguments
+    /// * `from` - The address of the account to burn from
+    /// * `amount` - The amount of tokens to burn
+    #[cfg(feature = "clawback")]
+    fn clawback(e: Env, from: Address, amount: i128);
+
     /// (Admin only) Set the admin of the token to a new address
     ///
     /// ### Arguments
@@ -151,4 +138,24 @@ pub trait SorobanOnly {
 
     /// Get the admin of the token
     fn admin(e: Env) -> Address;
+}
+
+#[cfg(not(feature = "sep-0041"))]
+pub trait TokenData {
+    /// Returns the balance of `id`.
+    ///
+    /// # Arguments
+    ///
+    /// - `id` - The address for which a balance is being queried. If the
+    /// address has no existing balance, returns 0.
+    fn balance(env: Env, id: Address) -> i128;
+
+    /// Returns the number of decimals used to represent amounts of this token.
+    fn decimals(env: Env) -> u32;
+
+    /// Returns the name for this token.
+    fn name(env: Env) -> String;
+
+    /// Returns the symbol for this token.
+    fn symbol(env: Env) -> String;
 }

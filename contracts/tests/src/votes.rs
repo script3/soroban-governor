@@ -8,6 +8,13 @@ mod token_votes_wasm {
 }
 pub use token_votes_wasm::Client as SorobanVotesClient;
 
+mod admin_token_votes_wasm {
+    soroban_sdk::contractimport!(
+        file = "../../target/wasm32-unknown-unknown/optimized/soroban_admin_votes.wasm"
+    );
+}
+pub use admin_token_votes_wasm::Client as AdminVotesClient;
+
 mod bonding_token_votes_wasm {
     soroban_sdk::contractimport!(
         file = "../../target/wasm32-unknown-unknown/optimized/soroban_votes_bonding.wasm"
@@ -66,6 +73,27 @@ pub fn create_soroban_token_votes_wasm<'a>(
 ) -> (Address, SorobanVotesClient<'a>) {
     let vote_token_id = e.register_contract_wasm(None, token_votes_wasm::WASM);
     let vote_token_client = SorobanVotesClient::new(e, &vote_token_id);
+    vote_token_client.initialize(
+        &admin,
+        &governor,
+        &7,
+        &String::from_str(e, "Voting Token"),
+        &String::from_str(e, "VOTES"),
+    );
+    (vote_token_id, vote_token_client)
+}
+
+/// Create a WASM soroban voting token contract
+///
+/// ### Arguments
+/// * `token` - The underlying token address
+pub fn create_soroban_admin_votes_wasm<'a>(
+    e: &Env,
+    admin: &Address,
+    governor: &Address,
+) -> (Address, AdminVotesClient<'a>) {
+    let vote_token_id = e.register_contract_wasm(None, admin_token_votes_wasm::WASM);
+    let vote_token_client = AdminVotesClient::new(e, &vote_token_id);
     vote_token_client.initialize(
         &admin,
         &governor,

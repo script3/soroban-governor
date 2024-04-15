@@ -3,7 +3,7 @@ use soroban_sdk::{
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, Events},
     vec, Address, Env, IntoVal, Symbol, Val,
 };
-use tests::{env::EnvTestUtils, votes::create_soroban_token_votes_wasm};
+use tests::{env::EnvTestUtils, votes::create_soroban_admin_votes_wasm};
 
 #[test]
 fn test_mint_soroban() {
@@ -15,11 +15,9 @@ fn test_mint_soroban() {
     let samwise = Address::generate(&e);
     let governor = Address::generate(&e);
 
-    let (votes_id, votes_client) = create_soroban_token_votes_wasm(&e, &bombadil, &governor);
-
+    let (votes_id, votes_client) = create_soroban_admin_votes_wasm(&e, &bombadil, &governor);
     let deposit_amount = 123_7654321;
     votes_client.mint(&samwise, &deposit_amount);
-
     // validate auth
     assert_eq!(
         e.auths()[0],
@@ -74,7 +72,7 @@ fn test_mint_negative_amount_soroban() {
     let samwise = Address::generate(&e);
     let governor = Address::generate(&e);
 
-    let (_, votes_client) = create_soroban_token_votes_wasm(&e, &bombadil, &governor);
+    let (_, votes_client) = create_soroban_admin_votes_wasm(&e, &bombadil, &governor);
 
     let deposit_amount: i128 = -1;
     votes_client.mint(&samwise, &deposit_amount);
@@ -90,7 +88,7 @@ fn test_set_admin() {
     let samwise = Address::generate(&e);
     let governor = Address::generate(&e);
 
-    let (votes_id, votes_client) = create_soroban_token_votes_wasm(&e, &bombadil, &governor);
+    let (votes_id, votes_client) = create_soroban_admin_votes_wasm(&e, &bombadil, &governor);
 
     votes_client.set_admin(&samwise);
 
@@ -125,6 +123,68 @@ fn test_set_admin() {
                 (Symbol::new(&e, "set_admin"), bombadil.clone()).into_val(&e),
                 samwise.into_val(&e)
             ),
+        ]
+    );
+}
+
+#[test]
+fn test_clawback_soroban() {
+    let e = Env::default();
+    e.mock_all_auths();
+    e.set_default_info();
+
+    let bombadil = Address::generate(&e);
+    let samwise = Address::generate(&e);
+    let governor = Address::generate(&e);
+
+    let (votes_id, votes_client) = create_soroban_admin_votes_wasm(&e, &bombadil, &governor);
+    let deposit_amount = 123_7654322;
+    let clawback_amount = deposit_amount / 2;
+    votes_client.mint(&samwise, &deposit_amount);
+    votes_client.clawback(&samwise, &clawback_amount);
+    // validate auth
+    assert_eq!(
+        e.auths()[0],
+        (
+            bombadil.clone(),
+            AuthorizedInvocation {
+                function: AuthorizedFunction::Contract((
+                    votes_id.clone(),
+                    Symbol::new(&e, "clawback"),
+                    vec![&e, samwise.to_val(), (clawback_amount).into_val(&e),]
+                )),
+                sub_invocations: std::vec![]
+            }
+        )
+    );
+
+    // validate chain results
+    assert_eq!(votes_client.balance(&samwise), clawback_amount);
+    assert_eq!(votes_client.total_supply(), clawback_amount);
+    assert_eq!(votes_client.get_votes(&samwise), clawback_amount);
+
+    // validate events
+    let events = e.events().all();
+    let tx_events = events.slice((events.len() - 2)..(events.len()));
+    let event_data_0: soroban_sdk::Vec<Val> = vec![
+        &e,
+        deposit_amount.into_val(&e),
+        clawback_amount.into_val(&e),
+    ];
+    assert_eq!(
+        tx_events,
+        vec![
+            &e,
+            (
+                votes_id.clone(),
+                (Symbol::new(&e, "votes_changed"), samwise.clone()).into_val(&e),
+                event_data_0.into_val(&e)
+            ),
+            (
+                votes_id.clone(),
+                (Symbol::new(&e, "clawback"), samwise.clone()).into_val(&e),
+                clawback_amount.into_val(&e)
+            )
         ]
     );
 }
