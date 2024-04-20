@@ -1,11 +1,8 @@
-use soroban_sdk::{
-    contract, contractimpl, panic_with_error, unwrap::UnwrapOptimized, Address, Env, String,
-};
+use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Env, String};
 
 use crate::{
     balance,
-    checkpoints::{upper_lookup, Checkpoint},
-    constants::MAX_CHECKPOINT_AGE_LEDGERS,
+    checkpoints::{add_vote_ledger, upper_lookup, Checkpoint},
     error::TokenVotesError,
     events::TokenVotesEvents,
     storage::{self, set_delegate, TokenMetadata},
@@ -149,27 +146,7 @@ impl Votes for TokenVotes {
         storage::get_governor(&e).require_auth();
         storage::extend_instance(&e);
 
-        let mut vote_ledgers = storage::get_vote_ledgers(&e);
-        let len = vote_ledgers.len();
-        let ledger_cutoff = e
-            .ledger()
-            .sequence()
-            .checked_sub(MAX_CHECKPOINT_AGE_LEDGERS);
-        if len > 0 && ledger_cutoff.is_some() {
-            // if the `ledger_cutoff` is found or if the index in which it could
-            // be inserted is returned, we remove everything before it
-            let result = vote_ledgers.binary_search(ledger_cutoff.unwrap_optimized());
-            let index = match result {
-                Ok(index) => index,
-                Err(index) => index,
-            };
-            // check if there is anything to remove before doing the work
-            if index > 0 {
-                vote_ledgers = vote_ledgers.slice(index..len);
-            }
-        }
-        vote_ledgers.push_back(sequence);
-        storage::set_vote_ledgers(&e, &vote_ledgers);
+        add_vote_ledger(&e, sequence);
     }
 
     fn get_past_total_supply(e: Env, sequence: u32) -> i128 {

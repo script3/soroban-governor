@@ -1,6 +1,6 @@
-use soroban_sdk::{panic_with_error, Address, Env, Vec};
+use soroban_sdk::{panic_with_error, unwrap::UnwrapOptimized, Address, Env, Vec};
 
-use crate::{error::TokenVotesError, storage};
+use crate::{constants::MAX_CHECKPOINT_AGE_LEDGERS, error::TokenVotesError, storage};
 
 pub trait Checkpoint {
     /// Convert a sequence and amount to a Checkpoint
@@ -111,6 +111,40 @@ pub fn add_supply_checkpoint(e: &Env, vote_ledgers: &Vec<u32>, to_add: u128) {
     }
 }
 
+/// Add a vote ledger to the list of vote ledgers. This function will also prune any
+/// vote ledgers that are at least `MAX_CHECKPOINT_AGE_LEDGERS` old.
+///
+/// ### Arguments
+/// * sequence - The sequence of the vote ledger to add
+pub fn add_vote_ledger(e: &Env, sequence: u32) {
+    let mut vote_ledgers = storage::get_vote_ledgers(&e);
+    let len = vote_ledgers.len();
+    let ledger_cutoff = e
+        .ledger()
+        .sequence()
+        .checked_sub(MAX_CHECKPOINT_AGE_LEDGERS);
+    if len > 0 && ledger_cutoff.is_some() {
+        // if the `ledger_cutoff` is found or if the index in which it could
+        // be inserted is returned, we remove everything before it
+        let result = vote_ledgers.binary_search(ledger_cutoff.unwrap_optimized());
+        let index = match result {
+            Ok(index) => index,
+            Err(index) => index,
+        };
+        // check if there is anything to remove before doing the work
+        if index > 0 {
+            vote_ledgers = vote_ledgers.slice(index..len);
+        }
+    }
+    if let Some(last) = vote_ledgers.last() {
+        if last == sequence {
+            return;
+        }
+    }
+    vote_ledgers.push_back(sequence);
+    storage::set_vote_ledgers(&e, &vote_ledgers);
+}
+
 /// Appends "to_add" to the checkpoints vector in place. This function also
 /// manages any pruning of old checkpoints that may be necessary.
 ///
@@ -204,6 +238,8 @@ fn add_checkpoint(
 
 #[cfg(test)]
 mod tests {
+    use std::println;
+
     use crate::{constants::ONE_DAY_LEDGERS, contract::TokenVotes};
 
     use super::*;
@@ -519,5 +555,147 @@ mod tests {
             vote_first.to_checkpoint_data(),
             (ledger + 3 * ONE_DAY_LEDGERS - 1, 456)
         );
+    }
+
+    #[test]
+    fn test_add_vote_ledger() {
+        let e = Env::default();
+        e.ledger().set(DEFAULT_LEDGER_INFO);
+
+        let ledger = DEFAULT_LEDGER_INFO.sequence_number;
+
+        let mut vote_ledgers = Vec::<u32>::new(&e);
+        vote_ledgers.push_back(ledger - MAX_CHECKPOINT_AGE_LEDGERS);
+        vote_ledgers.push_back(ledger - ONE_DAY_LEDGERS / 2);
+        vote_ledgers.push_back(ledger - 10);
+        vote_ledgers.push_back(ledger + ONE_DAY_LEDGERS);
+
+        let votes = e.register_contract(None, TokenVotes {});
+        e.as_contract(&votes, || {
+            storage::set_vote_ledgers(&e, &vote_ledgers);
+
+            let to_add_sequence = ledger + ONE_DAY_LEDGERS + 100;
+            add_vote_ledger(&e, to_add_sequence);
+
+            // perform expected change to vote_ledgers array
+            vote_ledgers.push_back(to_add_sequence);
+
+            let new_vote_ledgers = storage::get_vote_ledgers(&e);
+            println!("new_vote_ledgers: {:?}", new_vote_ledgers);
+            println!("vote_ledgers: {:?}", vote_ledgers);
+            assert_eq!(new_vote_ledgers.len(), vote_ledgers.len());
+            for i in 0..vote_ledgers.len() {
+                assert_eq!(
+                    new_vote_ledgers.get_unchecked(i),
+                    vote_ledgers.get_unchecked(i)
+                );
+            }
+        });
+    }
+
+    #[test]
+    fn test_add_vote_ledger_prunes() {
+        let e = Env::default();
+        e.ledger().set(DEFAULT_LEDGER_INFO);
+
+        let ledger = DEFAULT_LEDGER_INFO.sequence_number;
+
+        let mut vote_ledgers = Vec::<u32>::new(&e);
+        vote_ledgers.push_back(ledger - MAX_CHECKPOINT_AGE_LEDGERS - 100);
+        vote_ledgers.push_back(ledger - MAX_CHECKPOINT_AGE_LEDGERS - 1);
+        vote_ledgers.push_back(ledger - ONE_DAY_LEDGERS / 2);
+        vote_ledgers.push_back(ledger - 10);
+        vote_ledgers.push_back(ledger + ONE_DAY_LEDGERS);
+
+        let votes = e.register_contract(None, TokenVotes {});
+        e.as_contract(&votes, || {
+            storage::set_vote_ledgers(&e, &vote_ledgers);
+
+            let to_add_sequence = ledger + ONE_DAY_LEDGERS + 100;
+            add_vote_ledger(&e, to_add_sequence);
+
+            // perform expected change to vote_ledgers array
+            vote_ledgers.pop_front_unchecked();
+            vote_ledgers.pop_front_unchecked();
+            vote_ledgers.push_back(to_add_sequence);
+
+            let new_vote_ledgers = storage::get_vote_ledgers(&e);
+            println!("new_vote_ledgers: {:?}", new_vote_ledgers);
+            println!("vote_ledgers: {:?}", vote_ledgers);
+            assert_eq!(new_vote_ledgers.len(), vote_ledgers.len());
+            for i in 0..vote_ledgers.len() {
+                assert_eq!(
+                    new_vote_ledgers.get_unchecked(i),
+                    vote_ledgers.get_unchecked(i)
+                );
+            }
+        });
+    }
+
+    #[test]
+    fn test_add_vote_ledger_same_ledger() {
+        let e = Env::default();
+        e.ledger().set(DEFAULT_LEDGER_INFO);
+
+        let ledger = DEFAULT_LEDGER_INFO.sequence_number;
+
+        let mut vote_ledgers = Vec::<u32>::new(&e);
+        vote_ledgers.push_back(ledger - ONE_DAY_LEDGERS / 2);
+        vote_ledgers.push_back(ledger - 10);
+        vote_ledgers.push_back(ledger + ONE_DAY_LEDGERS + 100);
+
+        let votes = e.register_contract(None, TokenVotes {});
+        e.as_contract(&votes, || {
+            storage::set_vote_ledgers(&e, &vote_ledgers);
+
+            let to_add_sequence = ledger + ONE_DAY_LEDGERS + 100;
+            add_vote_ledger(&e, to_add_sequence);
+
+            // perform expected change to vote_ledgers array
+
+            let new_vote_ledgers = storage::get_vote_ledgers(&e);
+            assert_eq!(new_vote_ledgers.len(), vote_ledgers.len());
+            for i in 0..vote_ledgers.len() {
+                assert_eq!(
+                    new_vote_ledgers.get_unchecked(i),
+                    vote_ledgers.get_unchecked(i)
+                );
+            }
+        });
+    }
+
+    #[test]
+    fn test_add_vote_ledger_underflow_math() {
+        let e = Env::default();
+        let mut modified_ledger_info = DEFAULT_LEDGER_INFO.clone();
+        modified_ledger_info.sequence_number = ONE_DAY_LEDGERS;
+        e.ledger().set(modified_ledger_info);
+
+        let ledger = DEFAULT_LEDGER_INFO.sequence_number;
+
+        let mut vote_ledgers = Vec::<u32>::new(&e);
+        vote_ledgers.push_back(ledger - ONE_DAY_LEDGERS / 2);
+        vote_ledgers.push_back(ledger - 10);
+        vote_ledgers.push_back(ledger + ONE_DAY_LEDGERS);
+
+        let votes = e.register_contract(None, TokenVotes {});
+        e.as_contract(&votes, || {
+            storage::set_vote_ledgers(&e, &vote_ledgers);
+
+            let to_add_sequence = ledger + ONE_DAY_LEDGERS + 100;
+            add_vote_ledger(&e, to_add_sequence);
+
+            // perform expected change to vote_ledgers array
+            vote_ledgers.push_back(to_add_sequence);
+
+            let new_vote_ledgers = storage::get_vote_ledgers(&e);
+            assert_eq!(new_vote_ledgers.len(), vote_ledgers.len());
+            for i in 0..vote_ledgers.len() {
+                assert_eq!(
+                    new_vote_ledgers.get_unchecked(i),
+                    vote_ledgers.get_unchecked(i)
+                );
+            }
+        });
     }
 }
