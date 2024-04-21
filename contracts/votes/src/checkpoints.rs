@@ -558,6 +558,27 @@ mod tests {
     }
 
     #[test]
+    fn test_add_checkpoint_vote_ledger_same_as_cur_ledger_skips() {
+        let e = Env::default();
+        e.ledger().set(DEFAULT_LEDGER_INFO);
+
+        let ledger = DEFAULT_LEDGER_INFO.sequence_number;
+        let mut voting_ledgers = Vec::<u32>::new(&e);
+        voting_ledgers.push_back(ledger);
+        let mut checkpoints = Vec::<u128>::new(&e);
+        checkpoints.push_back(u128::from_checkpoint_data(&e, ledger - 123, 456));
+
+        // checkpoint not needed, vote ledger captured by new entry
+        let to_add = u128::from_checkpoint_data(&e, ledger, 42);
+        let needs_write = add_checkpoint(&e, &voting_ledgers, &mut checkpoints, &to_add);
+
+        assert!(!needs_write);
+        assert_eq!(checkpoints.len(), 1);
+        let vote_first = checkpoints.first_unchecked();
+        assert_eq!(vote_first.to_checkpoint_data(), (ledger - 123, 456));
+    }
+
+    #[test]
     fn test_add_vote_ledger() {
         let e = Env::default();
         e.ledger().set(DEFAULT_LEDGER_INFO);
