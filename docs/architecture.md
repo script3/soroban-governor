@@ -41,7 +41,7 @@ The Governor manages a handful of parameters that define how the proposal flow i
 * Quorum `u32`
     * The percentage of votes (expressed in BPS) needed of the total available votes to consider a vote successful.
 * Counting Type `u32`
-    * Determine which votes to count against the quorum out of for, against, and abstain. The value is encoded such that only the last 3 bits are considered, and follows the structure `MSB...{for}{against}{abstain}`, such that any value != 0 means that type of vote is counted in the quorum. For example, consider 5 == `0x0...0101`, this means that votes "for" and "abstain" are included in the quorum, but votes "against" are not.
+    * Determine which votes to count against the quorum out of for, against, and abstain. The value is encoded such that only the last 3 bits are considered, and follows the structure `MSB...{against}{for}{abstain}`, such that any value != 0 means that type of vote is counted in the quorum. For example, consider 5 == `0x0...0101`, this means that votes "against" and "abstain" are included in the quorum, but votes "for" are not.
 * Vote Threshold `u32`
     * The percentage of votes "yes" (expressed in BPS) needed to consider a vote successful.
 

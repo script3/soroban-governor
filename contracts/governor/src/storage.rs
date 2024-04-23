@@ -263,9 +263,9 @@ pub fn get_voter_support(e: &Env, voter: &Address, proposal_id: u32) -> Option<u
 /// * `voter` - The address of the voter
 /// * `proposal_id` - The proposal id
 /// * `support` - The support the user chose
-///                 - 0 to vote abstain
-///                 - 1 to vote against
-///                 - 2 to vote for
+///                 - 0 to vote against
+///                 - 1 to vote for
+///                 - 2 to vote abstain
 pub fn create_voter_support(e: &Env, voter: &Address, proposal_id: u32, support: u32) {
     let key = GovernorDataKey::VoterSup(VoterStatusKey {
         voter: voter.clone(),

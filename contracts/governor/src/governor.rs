@@ -82,15 +82,15 @@ pub trait Governor {
     /// * `voter` - The address of the account voting
     /// * `proposal_id` - The id of the proposal to vote on
     /// * `support` - The vote to cast:
-    ///                 - 0 to vote abstain
-    ///                 - 1 to vote against
-    ///                 - 2 to vote for
+    ///                 - 0 to vote against
+    ///                 - 1 to vote for
+    ///                 - 2 to vote abstain
     fn vote(e: Env, voter: Address, proposal_id: u32, support: u32);
 
     /// Get the voting status of a voter for a proposal.
     ///
     /// Returns None if the voter has not voted on the proposal, or a u32 that
-    /// represents the vote cast (0 = abstain, 1 = against, 2 = for).
+    /// represents the vote cast (0 = against, 1 = for, 2 = abstain).
     ///
     /// ### Arguments
     /// * `voter` - The address of the account voting
