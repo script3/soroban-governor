@@ -1,0 +1,26 @@
+name: Stellar Expert WASM Release
+on:
+  push: 
+    tags:
+      - 'v*'  # triggered whenever a new tag (previxed with "v") is pushed to the repository
+jobs:
+  release-contract-governor:
+    uses: stellar-expert/soroban-build-workflow/.github/workflows/release.yml@main
+    with:
+      release_name: ${{ github.ref_name }}
+      release_description: 'Soroban Governor Release'
+      relative_path: '["contracts/governor"]'
+      package: 'soroban-governor'
+      make_target: 'build'
+    secrets:
+      release_token: ${{ secrets.GITHUB_TOKEN }}
+
+  release-contract-votes:
+    uses: stellar-expert/soroban-build-workflow/.github/workflows/release.yml@main
+    with:
+      release_name: ${{ github.ref_name }}
+      release_description: 'Soroban Bonding Votes Release'
+      relative_path: '["contracts/votes"]'
+      package: 'soroban-votes'
+    secrets:
+      release_token: ${{ secrets.GITHUB_TOKEN }}

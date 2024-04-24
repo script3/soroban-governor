@@ -1,8 +1,8 @@
 [package]
 name = "soroban-votes"
-version = "0.0.0"
+version = "1.0.0"
 authors = ["Script3 Ltd. <gm@script3.io>"]
-license = "AGPL-3.0"
+license = "MIT"
 edition = "2021"
 publish = false
 
@@ -11,6 +11,7 @@ crate-type = ["cdylib", "rlib"]
 doctest = false
 
 [features]
+default = ["bonding"]
 testutils = ["soroban-sdk/testutils"]
 bonding = []
 sep-0041 = []
