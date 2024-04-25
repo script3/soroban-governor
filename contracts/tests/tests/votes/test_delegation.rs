@@ -146,6 +146,7 @@ fn test_delegation_chain_only_delegates_balance() {
     votes_client.set_vote_sequence(&(cur_ledger + 99));
     votes_client.set_vote_sequence(&(cur_ledger + 199));
     votes_client.set_vote_sequence(&(cur_ledger + 299));
+    votes_client.set_vote_sequence(&(cur_ledger + 399));
 
     let initial_amount_frodo = 50 * 10i128.pow(7);
     votes_client.mint(&frodo, &initial_amount_frodo);
@@ -209,10 +210,39 @@ fn test_delegation_chain_only_delegates_balance() {
     );
     assert_eq!(votes_client.get_votes(&merry), transfer_amount);
 
+    e.jump(100);
+
+    // verify joining a delegation chain delegates to the immediate delegate
+    votes_client.delegate(&merry, &pippin);
+
+    assert_eq!(votes_client.get_delegate(&merry), pippin);
+    assert_eq!(votes_client.get_delegate(&pippin), samwise);
+
+    assert_eq!(votes_client.balance(&merry), transfer_amount);
+    assert_eq!(
+        votes_client.balance(&pippin),
+        initial_amount_pippen - transfer_amount
+    );
+
+    assert_eq!(votes_client.get_votes(&pippin), transfer_amount);
+    assert_eq!(
+        votes_client.get_votes(&samwise),
+        initial_amount_pippen - transfer_amount
+    );
+    assert_eq!(
+        votes_client.get_votes(&frodo),
+        initial_amount_samwise + initial_amount_frodo
+    );
+    assert_eq!(votes_client.get_votes(&merry), 0);
+
     // verify checkpoints for pippin
     assert_eq!(
-        votes_client.get_past_votes(&pippin, &(e.ledger().sequence() - 201)),
+        votes_client.get_past_votes(&pippin, &(e.ledger().sequence() - 301)),
         initial_amount_pippen
+    );
+    assert_eq!(
+        votes_client.get_past_votes(&pippin, &(e.ledger().sequence() - 201)),
+        0
     );
     assert_eq!(
         votes_client.get_past_votes(&pippin, &(e.ledger().sequence() - 101)),
@@ -225,30 +255,56 @@ fn test_delegation_chain_only_delegates_balance() {
 
     // verify checkpoints for samwise
     assert_eq!(
-        votes_client.get_past_votes(&samwise, &(e.ledger().sequence() - 201)),
+        votes_client.get_past_votes(&samwise, &(e.ledger().sequence() - 301)),
         initial_amount_samwise
     );
     assert_eq!(
-        votes_client.get_past_votes(&samwise, &(e.ledger().sequence() - 101)),
+        votes_client.get_past_votes(&samwise, &(e.ledger().sequence() - 201)),
         initial_amount_samwise + initial_amount_pippen
     );
     assert_eq!(
-        votes_client.get_past_votes(&samwise, &(e.ledger().sequence() - 1)),
+        votes_client.get_past_votes(&samwise, &(e.ledger().sequence() - 101)),
         initial_amount_pippen
+    );
+    assert_eq!(
+        votes_client.get_past_votes(&samwise, &(e.ledger().sequence() - 1)),
+        initial_amount_pippen - transfer_amount
     );
 
     // verify checkpoints for frodo
+    assert_eq!(
+        votes_client.get_past_votes(&frodo, &(e.ledger().sequence() - 301)),
+        initial_amount_frodo
+    );
     assert_eq!(
         votes_client.get_past_votes(&frodo, &(e.ledger().sequence() - 201)),
         initial_amount_frodo
     );
     assert_eq!(
         votes_client.get_past_votes(&frodo, &(e.ledger().sequence() - 101)),
-        initial_amount_frodo
+        initial_amount_frodo + initial_amount_samwise
     );
     assert_eq!(
         votes_client.get_past_votes(&frodo, &(e.ledger().sequence() - 1)),
         initial_amount_frodo + initial_amount_samwise
+    );
+
+    // verify checkpoints for merry
+    assert_eq!(
+        votes_client.get_past_votes(&merry, &(e.ledger().sequence() - 301)),
+        0
+    );
+    assert_eq!(
+        votes_client.get_past_votes(&merry, &(e.ledger().sequence() - 201)),
+        0
+    );
+    assert_eq!(
+        votes_client.get_past_votes(&merry, &(e.ledger().sequence() - 101)),
+        0
+    );
+    assert_eq!(
+        votes_client.get_past_votes(&merry, &(e.ledger().sequence() - 1)),
+        transfer_amount
     );
 }
 
@@ -272,4 +328,49 @@ fn test_delegation_to_current_delegate() {
 
     let result = votes_client.try_delegate(&samwise, &frodo);
     assert_eq!(result.err(), Some(Ok(Error::from_contract_error(101))));
+}
+
+#[test]
+fn test_delegation_and_change_delegation() {
+    let e = Env::default();
+    e.mock_all_auths();
+    e.set_default_info();
+
+    let bombadil = Address::generate(&e);
+    let samwise = Address::generate(&e);
+    let frodo = Address::generate(&e);
+    let pippin = Address::generate(&e);
+    let governor = Address::generate(&e);
+
+    let (token_id, token_client) = create_stellar_token(&e, &bombadil);
+    let (_, votes_client) = create_bonding_token_votes(&e, &token_id, &governor);
+
+    let initial_amount_frodo = 50 * 10i128.pow(7);
+    token_client.mint(&frodo, &initial_amount_frodo);
+    votes_client.deposit(&frodo, &initial_amount_frodo);
+
+    votes_client.delegate(&frodo, &samwise);
+
+    assert_eq!(votes_client.get_delegate(&frodo), samwise);
+    assert_eq!(votes_client.get_votes(&frodo), 0);
+    assert_eq!(votes_client.get_votes(&samwise), initial_amount_frodo);
+    assert_eq!(votes_client.get_votes(&pippin), 0);
+
+    e.jump(123);
+
+    votes_client.delegate(&frodo, &pippin);
+
+    assert_eq!(votes_client.get_delegate(&frodo), pippin);
+    assert_eq!(votes_client.get_votes(&frodo), 0);
+    assert_eq!(votes_client.get_votes(&samwise), 0);
+    assert_eq!(votes_client.get_votes(&pippin), initial_amount_frodo);
+
+    e.jump(123);
+
+    votes_client.delegate(&frodo, &frodo);
+
+    assert_eq!(votes_client.get_delegate(&frodo), frodo);
+    assert_eq!(votes_client.get_votes(&frodo), initial_amount_frodo);
+    assert_eq!(votes_client.get_votes(&samwise), 0);
+    assert_eq!(votes_client.get_votes(&pippin), 0);
 }
