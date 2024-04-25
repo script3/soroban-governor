@@ -196,7 +196,6 @@ impl Votes for TokenVotes {
         if cur_delegate == delegatee {
             panic_with_error!(e, TokenVotesError::InvalidDelegateeError);
         }
-        let dest_delegate = storage::get_delegate(&e, &delegatee);
         let balance = storage::get_balance(&e, &account);
         let vote_ledgers = storage::get_vote_ledgers(&e);
         if balance > 0 {
@@ -204,7 +203,7 @@ impl Votes for TokenVotes {
                 &e,
                 &vote_ledgers,
                 Some(&cur_delegate),
-                Some(&dest_delegate),
+                Some(&delegatee),
                 balance,
             );
         }
