@@ -27,7 +27,7 @@ fn test_double_count() {
     let samwise = Address::generate(&e);
     let pippin = Address::generate(&e);
 
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, votes_address) = create_soroban_governor_wasm(&e, &bombadil, &settings);
     let votes_client = SorobanVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);

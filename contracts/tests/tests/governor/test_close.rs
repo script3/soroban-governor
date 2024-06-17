@@ -23,9 +23,9 @@ fn test_close_successful() {
     let samwise = Address::generate(&e);
     let pippin = Address::generate(&e);
 
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -99,9 +99,9 @@ fn test_close_defeated_quorum_not_met() {
     let samwise = Address::generate(&e);
     let pippin = Address::generate(&e);
 
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -171,9 +171,9 @@ fn test_close_defeated_threshold_not_met() {
     let frodo = Address::generate(&e);
     let samwise = Address::generate(&e);
     let pippin = Address::generate(&e);
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -244,9 +244,9 @@ fn test_close_expired() {
     let samwise = Address::generate(&e);
     let pippin = Address::generate(&e);
 
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -320,10 +320,10 @@ fn test_close_tracks_quorum_with_counting_type() {
     let pippin = Address::generate(&e);
     let merry = Address::generate(&e);
 
-    let mut settings = default_governor_settings(&e);
+    let mut settings = default_governor_settings();
     settings.counting_type = 0b011; // include against and abstain in quorum
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -373,9 +373,9 @@ fn test_close_successful_non_executable() {
     let samwise = Address::generate(&e);
     let pippin = Address::generate(&e);
 
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -419,9 +419,9 @@ fn test_close_nonexistent_proposal() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -445,9 +445,9 @@ fn test_close_vote_period_unfinished() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -477,9 +477,9 @@ fn test_close_already_closed() {
     let samwise = Address::generate(&e);
     let pippin = Address::generate(&e);
 
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);

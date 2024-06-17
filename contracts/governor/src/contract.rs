@@ -20,12 +20,13 @@ pub struct GovernorContract;
 
 #[contractimpl]
 impl Governor for GovernorContract {
-    fn initialize(e: Env, votes: Address, settings: GovernorSettings) {
+    fn initialize(e: Env, votes: Address, council: Address, settings: GovernorSettings) {
         if storage::get_is_init(&e) {
             panic_with_error!(&e, GovernorError::AlreadyInitializedError);
         }
         require_valid_settings(&e, &settings);
         storage::set_settings(&e, &settings);
+        storage::set_council_address(&e, &council);
         storage::set_voter_token_address(&e, &votes);
         storage::set_is_init(&e);
         storage::extend_instance(&e);
@@ -33,6 +34,14 @@ impl Governor for GovernorContract {
 
     fn settings(e: Env) -> GovernorSettings {
         storage::get_settings(&e)
+    }
+
+    fn council(e: Env) -> Address {
+        storage::get_council_address(&e)
+    }
+
+    fn vote_token(e: Env) -> Address {
+        storage::get_voter_token_address(&e)
     }
 
     fn propose(
@@ -49,15 +58,16 @@ impl Governor for GovernorContract {
             panic_with_error!(&e, GovernorError::ProposalAlreadyOpenError);
         }
 
-        let settings = storage::get_settings(&e);
         match action {
             ProposalAction::Upgrade(_) => {
-                if creator != settings.council {
+                let council = storage::get_council_address(&e);
+                if creator != council {
                     panic_with_error!(&e, GovernorError::UnauthorizedError);
                 }
             }
             _ => {}
         };
+        let settings = storage::get_settings(&e);
         let votes_client = VotesClient::new(&e, &storage::get_voter_token_address(&e));
         let creater_votes = votes_client.get_votes(&creator);
         if creater_votes < settings.proposal_threshold {
@@ -204,11 +214,22 @@ impl Governor for GovernorContract {
 
         let mut proposal_data = storage::get_proposal_data(&e, proposal_id)
             .unwrap_or_else(|| panic_with_error!(&e, GovernorError::NonExistentProposalError));
+
         // require from to be the creator or the council
         if from != proposal_data.creator {
-            let settings = storage::get_settings(&e);
-            if from != settings.council {
+            let council = storage::get_council_address(&e);
+            if from != council {
                 panic_with_error!(&e, GovernorError::UnauthorizedError);
+            } else {
+                // block the security council from canceling council proposals
+                let proposal_config =
+                    storage::get_proposal_config(&e, proposal_id).unwrap_optimized();
+                match proposal_config.action {
+                    ProposalAction::Council(_) => {
+                        panic_with_error!(&e, GovernorError::UnauthorizedError);
+                    }
+                    _ => {}
+                }
             }
         }
 

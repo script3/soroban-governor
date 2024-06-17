@@ -1,6 +1,9 @@
 #[cfg(test)]
 use sep_41_token::testutils::MockTokenClient;
-use soroban_governor::{types::ProposalStatus, GovernorContractClient};
+use soroban_governor::{
+    types::{ProposalAction, ProposalStatus},
+    GovernorContractClient,
+};
 use soroban_sdk::{
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, Events},
     vec, Address, Env, Error, IntoVal, Symbol, TryIntoVal,
@@ -19,9 +22,9 @@ fn test_cancel() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -86,9 +89,9 @@ fn test_cancel_council() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -103,22 +106,18 @@ fn test_cancel_council() {
     let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay / 2);
 
-    governor_client.cancel(&settings.council, &proposal_id);
+    governor_client.cancel(&bombadil, &proposal_id);
 
     // verify auths
     assert_eq!(
         e.auths()[0],
         (
-            settings.council.clone(),
+            bombadil.clone(),
             AuthorizedInvocation {
                 function: AuthorizedFunction::Contract((
                     governor_address.clone(),
                     Symbol::new(&e, "cancel"),
-                    vec![
-                        &e,
-                        settings.council.to_val(),
-                        proposal_id.try_into_val(&e).unwrap()
-                    ]
+                    vec![&e, bombadil.to_val(), proposal_id.try_into_val(&e).unwrap()]
                 )),
                 sub_invocations: std::vec![]
             }
@@ -150,6 +149,47 @@ fn test_cancel_council() {
 }
 
 #[test]
+fn test_cancel_council_proposal() {
+    let e = Env::default();
+    e.mock_all_auths();
+    e.set_default_info();
+
+    let bombadil = Address::generate(&e);
+    let new_council = Address::generate(&e);
+    let samwise = Address::generate(&e);
+    let settings = default_governor_settings();
+    let (governor_address, token_address, votes_address) =
+        create_governor(&e, &bombadil, &bombadil, &settings);
+    let token_client = MockTokenClient::new(&e, &token_address);
+    let votes_client = BondingVotesClient::new(&e, &votes_address);
+    let governor_client = GovernorContractClient::new(&e, &governor_address);
+
+    let samwise_votes: i128 = 1 * 10i128.pow(7);
+    token_client.mint(&samwise, &samwise_votes);
+    votes_client.deposit(&samwise, &samwise_votes);
+
+    // setup a council proposal
+    let (title, description, _) = default_proposal_data(&e);
+    let action = ProposalAction::Council(new_council.clone());
+
+    let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
+    e.jump(settings.vote_delay / 2);
+
+    // try to cancel with council
+    let result = governor_client.try_cancel(&bombadil, &proposal_id);
+    assert_eq!(result.err(), Some(Ok(Error::from_contract_error(4))));
+
+    let proposal = governor_client.get_proposal(&proposal_id).unwrap();
+    assert_eq!(proposal.data.status, ProposalStatus::Open);
+
+    // cancel with creator
+    governor_client.cancel(&samwise, &proposal_id);
+
+    let proposal = governor_client.get_proposal(&proposal_id).unwrap();
+    assert_eq!(proposal.data.status, ProposalStatus::Canceled);
+}
+
+#[test]
 #[should_panic(expected = "Error(Contract, #201)")]
 fn test_cancel_nonexistent_proposal() {
     let e = Env::default();
@@ -158,8 +198,8 @@ fn test_cancel_nonexistent_proposal() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let settings = default_governor_settings(&e);
-    let (governor_address, _, _) = create_governor(&e, &bombadil, &settings);
+    let settings = default_governor_settings();
+    let (governor_address, _, _) = create_governor(&e, &bombadil, &bombadil, &settings);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
 
     governor_client.cancel(&samwise, &1);
@@ -173,9 +213,9 @@ fn test_cancel_proposal_active() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -204,9 +244,10 @@ fn test_cancel_unauthorized_address() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let settings = default_governor_settings(&e);
+    let pippin = Address::generate(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -221,7 +262,7 @@ fn test_cancel_unauthorized_address() {
     let proposal_id = governor_client.propose(&samwise, &title, &description, &action);
     e.jump(settings.vote_delay / 2);
 
-    governor_client.cancel(&bombadil, &proposal_id);
+    governor_client.cancel(&pippin, &proposal_id);
 }
 
 #[test]
@@ -235,9 +276,9 @@ fn test_cancel_already_closed() {
     let samwise = Address::generate(&e);
     let pippin = Address::generate(&e);
 
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);

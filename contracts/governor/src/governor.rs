@@ -8,11 +8,18 @@ pub trait Governor {
     ///
     /// ### Arguments
     /// * `votes` - The address of the contract used to track votes
+    /// * `council` - The address of the security council for the DAO
     /// * `settings` - The settings for the governor
-    fn initialize(e: Env, votes: Address, settings: GovernorSettings);
+    fn initialize(e: Env, votes: Address, council: Address, settings: GovernorSettings);
 
     /// Get the current settings of the governor
     fn settings(e: Env) -> GovernorSettings;
+
+    /// Get the address of the security council for the DAO
+    fn council(e: Env) -> Address;
+
+    /// Get the address of the votes token contract
+    fn vote_token(e: Env) -> Address;
 
     /// Create a new proposal
     ///
