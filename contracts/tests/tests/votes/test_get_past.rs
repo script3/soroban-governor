@@ -389,3 +389,66 @@ fn test_past_checkpoints_get_pruned() {
         deposit_amount_pippin - transfer_2_amount
     );
 }
+
+#[test]
+fn test_get_past_transfer_same_user() {
+    let e = Env::default();
+    e.mock_all_auths();
+    e.set_default_info();
+    e.budget().reset_unlimited();
+
+    let bombadil = Address::generate(&e);
+    let samwise = Address::generate(&e);
+    let frodo = Address::generate(&e);
+    let pippin = Address::generate(&e);
+    let merry = Address::generate(&e);
+    let governor = Address::generate(&e);
+
+    let (_, token_client) = create_soroban_token_votes_wasm(&e, &bombadil, &governor);
+
+    let vote_ledger = e.ledger().sequence() + 99;
+    token_client.set_vote_sequence(&vote_ledger);
+
+    let initial_balance = 100 * 10i128.pow(7);
+    token_client.mint(&frodo, &initial_balance);
+    token_client.mint(&samwise, &initial_balance);
+    token_client.mint(&pippin, &initial_balance);
+    token_client.mint(&merry, &initial_balance);
+
+    token_client.delegate(&pippin, &samwise);
+
+    assert_eq!(token_client.get_votes(&frodo), initial_balance);
+    assert_eq!(token_client.get_votes(&samwise), initial_balance * 2);
+    assert_eq!(token_client.get_votes(&pippin), 0);
+    assert_eq!(token_client.get_votes(&merry), initial_balance);
+
+    e.jump(10);
+
+    // no checkpoint recorded without actual token changes
+    token_client.transfer(&frodo, &frodo, &100);
+    token_client.transfer(&pippin, &pippin, &100);
+    token_client.transfer(&merry, &bombadil, &0);
+
+    assert_eq!(token_client.get_votes(&frodo), initial_balance);
+    assert_eq!(token_client.get_votes(&samwise), initial_balance * 2);
+    assert_eq!(token_client.get_votes(&pippin), 0);
+    assert_eq!(token_client.get_votes(&merry), initial_balance);
+
+    // verify vote balances were not written
+    assert_eq!(
+        token_client.get_past_votes(&frodo, &(e.ledger().sequence() - 1)),
+        initial_balance
+    );
+    assert_eq!(
+        token_client.get_past_votes(&samwise, &(e.ledger().sequence() - 1)),
+        initial_balance * 2
+    );
+    assert_eq!(
+        token_client.get_past_votes(&pippin, &(e.ledger().sequence() - 1)),
+        0
+    );
+    assert_eq!(
+        token_client.get_past_votes(&merry, &(e.ledger().sequence() - 1)),
+        initial_balance
+    );
+}
