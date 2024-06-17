@@ -50,7 +50,7 @@ impl VoteCount {
     /// * False if the vote has not reached quorum
     pub fn is_over_quorum(&self, quorum: u32, counting_type: u32, total_votes: i128) -> bool {
         let quorum_votes = self.count_quorum(counting_type);
-        let quorum_requirement_floor = (total_votes * quorum as i128) / BPS_SCALAR;
+        let quorum_requirement_floor = (total_votes * quorum as i128) / (BPS_SCALAR as i128);
         quorum_votes > quorum_requirement_floor
     }
 
@@ -67,7 +67,7 @@ impl VoteCount {
         if against_and_for_votes == 0 {
             return false;
         }
-        let for_votes = (self._for * BPS_SCALAR) / against_and_for_votes;
+        let for_votes = (self._for * BPS_SCALAR as i128) / against_and_for_votes;
         for_votes > vote_threshold as i128
     }
 
