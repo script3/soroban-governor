@@ -1,7 +1,7 @@
 /// One day assuming 5s a ledger
 pub(crate) const ONE_DAY_LEDGERS: u32 = 17280;
 /// One hour assuming 5s a ledger
-pub(crate) const ONE_HOUR_LEDGERS: u32 = 360;
+pub(crate) const ONE_HOUR_LEDGERS: u32 = 720;
 /// 1 in basis points
 pub(crate) const BPS_SCALAR: u32 = 10_000;
 
