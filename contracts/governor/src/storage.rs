@@ -10,7 +10,8 @@ use crate::{
 const VOTER_TOKEN_ADDRESS_KEY: &str = "Votes";
 const SETTINGS_KEY: &str = "Settings";
 const IS_INIT_KEY: &str = "IsInit";
-const PROPOSAL_ID_KEY: &str = "ProposalId";
+const PROPOSAL_ID_KEY: &str = "PropId";
+const COUNCIL_KEY: &str = "Council";
 
 // All stored data is used on a per proposal basis outside of the instance. Extend past the max possible
 // proposal lifetime to ensure all data is available after the proposal is concluced.
@@ -116,6 +117,24 @@ pub fn get_settings(e: &Env) -> GovernorSettings {
     e.storage()
         .instance()
         .get::<Symbol, GovernorSettings>(&Symbol::new(&e, SETTINGS_KEY))
+        .unwrap_optimized()
+}
+
+/// Set the council address
+///
+/// ### Arguments
+/// * `council` - The address of the council
+pub fn set_council_address(e: &Env, council: &Address) {
+    e.storage()
+        .instance()
+        .set::<Symbol, Address>(&Symbol::new(&e, COUNCIL_KEY), &council);
+}
+
+/// Get the council address
+pub fn get_council_address(e: &Env) -> Address {
+    e.storage()
+        .instance()
+        .get::<Symbol, Address>(&Symbol::new(&e, COUNCIL_KEY))
         .unwrap_optimized()
 }
 

@@ -19,9 +19,9 @@ fn test_propose_calldata() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -139,9 +139,9 @@ fn test_propose_calldata_validates() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -169,9 +169,9 @@ fn test_propose_with_active_proposal() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -205,9 +205,9 @@ fn test_propose_snapshot() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -241,10 +241,9 @@ fn test_propose_upgrade() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let mut settings = default_governor_settings(&e);
-    settings.council = samwise.clone();
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &samwise, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -284,10 +283,9 @@ fn test_propose_upgrade_requires_council() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let mut settings = default_governor_settings(&e);
-    settings.council = bombadil.clone();
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -310,9 +308,9 @@ fn test_propose_settings() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -353,9 +351,9 @@ fn test_propose_settings_validates() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -384,9 +382,9 @@ fn test_propose_below_proposal_threshold() {
 
     let bombadil = Address::generate(&e);
     let samwise = Address::generate(&e);
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor(&e, &bombadil, &settings);
+        create_governor(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);

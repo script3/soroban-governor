@@ -28,9 +28,9 @@ fn test_wasm_happy_path() {
     let pippin = Address::generate(&e);
     let merry = Address::generate(&e);
 
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor_wasm(&e, &bombadil, &settings);
+        create_governor_wasm(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);
@@ -173,7 +173,7 @@ fn test_wasm_happy_path_soroban_token() {
     let pippin = Address::generate(&e);
     let merry = Address::generate(&e);
 
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (token_address, token_client) = create_stellar_token(&e, &bombadil);
     let (governor_address, votes_address) = create_soroban_governor_wasm(&e, &bombadil, &settings);
     let votes_client = SorobanVotesClient::new(&e, &votes_address);
@@ -308,7 +308,7 @@ fn test_wasm_happy_path_admin_token() {
     let pippin = Address::generate(&e);
     let merry = Address::generate(&e);
 
-    let settings = default_governor_settings(&e);
+    let settings = default_governor_settings();
     let (token_address, token_client) = create_stellar_token(&e, &bombadil);
     let (governor_address, votes_address) =
         create_soroban_admin_governor_wasm(&e, &bombadil, &settings);

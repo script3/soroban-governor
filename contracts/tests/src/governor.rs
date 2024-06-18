@@ -18,10 +18,12 @@ mod governor_contract_wasm {
 ///
 /// ### Arguments
 /// * `admin` - The address of the admin
+/// * `council` - The address of the governor security council
 /// * `settings` - The settings for the governor
 pub fn create_governor<'a>(
     e: &Env,
     admin: &Address,
+    council: &Address,
     settings: &GovernorSettings,
 ) -> (Address, Address, Address) {
     let governor_address = e.register_contract(None, GovernorContract {});
@@ -30,7 +32,7 @@ pub fn create_governor<'a>(
         votes::create_bonding_token_votes(e, &underlying_token, &governor_address);
     let govenor_client: GovernorContractClient<'a> =
         GovernorContractClient::new(&e, &governor_address);
-    govenor_client.initialize(&vote_address, settings);
+    govenor_client.initialize(&vote_address, council, settings);
     return (governor_address, underlying_token, vote_address);
 }
 
@@ -40,10 +42,12 @@ pub fn create_governor<'a>(
 ///
 /// ### Arguments
 /// * `admin` - The address of the admin
+/// * `council` - The address of the governor security council
 /// * `settings` - The settings for the governor
 pub fn create_governor_wasm<'a>(
     e: &Env,
     admin: &Address,
+    council: &Address,
     settings: &GovernorSettings,
 ) -> (Address, Address, Address) {
     let governor_address = e.register_contract_wasm(None, governor_contract_wasm::WASM);
@@ -52,7 +56,7 @@ pub fn create_governor_wasm<'a>(
         votes::create_bonding_token_votes_wasm(e, &underlying_token, &governor_address);
     let govenor_client: GovernorContractClient<'a> =
         GovernorContractClient::new(&e, &governor_address);
-    govenor_client.initialize(&vote_address, settings);
+    govenor_client.initialize(&vote_address, council, settings);
     return (governor_address, underlying_token, vote_address);
 }
 
@@ -72,7 +76,7 @@ pub fn create_soroban_governor_wasm<'a>(
     let (vote_address, _) = votes::create_soroban_token_votes_wasm(e, &admin, &governor_address);
     let govenor_client: GovernorContractClient<'a> =
         GovernorContractClient::new(&e, &governor_address);
-    govenor_client.initialize(&vote_address, settings);
+    govenor_client.initialize(&vote_address, &admin, settings);
     return (governor_address, vote_address);
 }
 
@@ -92,14 +96,13 @@ pub fn create_soroban_admin_governor_wasm<'a>(
     let (vote_address, _) = votes::create_soroban_admin_votes_wasm(e, &admin, &governor_address);
     let govenor_client: GovernorContractClient<'a> =
         GovernorContractClient::new(&e, &governor_address);
-    govenor_client.initialize(&vote_address, settings);
+    govenor_client.initialize(&vote_address, admin, settings);
     return (governor_address, vote_address);
 }
 
 /// Default governor settings
-pub fn default_governor_settings(e: &Env) -> GovernorSettings {
+pub fn default_governor_settings() -> GovernorSettings {
     GovernorSettings {
-        council: Address::generate(e),
         proposal_threshold: 1_0000000,
         vote_delay: ONE_DAY_LEDGERS,
         vote_period: ONE_DAY_LEDGERS * 7,

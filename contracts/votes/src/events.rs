@@ -1,4 +1,4 @@
-use soroban_sdk::{symbol_short, Address, Env, Symbol};
+use soroban_sdk::{Address, Env, Symbol};
 
 pub struct TokenVotesEvents {}
 
@@ -7,9 +7,9 @@ impl TokenVotesEvents {
     ///
     /// - topics - `["delegate", delegator: Address, delegatee: Address]`
     /// - data - `[old_delegatee: Address]`
-    pub fn delegate(env: &Env, delegator: Address, delegatee: Address, old_delegatee: Address) {
-        let topics = (symbol_short!("delegate"), delegator, delegatee);
-        env.events().publish(topics, old_delegatee);
+    pub fn delegate(e: &Env, delegator: Address, delegatee: Address, old_delegatee: Address) {
+        let topics = (Symbol::new(&e, "delegate"), delegator, delegatee);
+        e.events().publish(topics, old_delegatee);
     }
 
     /// Emitted when a delagate's votes are changed

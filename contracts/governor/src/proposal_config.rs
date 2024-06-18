@@ -26,6 +26,7 @@ impl ProposalConfig {
             }
             ProposalAction::Settings(ref settings) => require_valid_settings(e, settings),
             ProposalAction::Upgrade(_) => (),
+            ProposalAction::Council(_) => (),
             ProposalAction::Snapshot => (),
         }
 
@@ -54,6 +55,9 @@ impl ProposalConfig {
             ProposalAction::Upgrade(ref wasm_hash) => {
                 e.deployer().update_current_contract_wasm(wasm_hash.clone());
             }
+            ProposalAction::Council(ref council) => {
+                storage::set_council_address(e, council);
+            }
             ProposalAction::Snapshot => {
                 panic_with_error!(e, GovernorError::InvalidProposalType)
             }
@@ -63,10 +67,8 @@ impl ProposalConfig {
     /// Check if the proposal is executable
     pub fn is_executable(&self) -> bool {
         match self.action {
-            ProposalAction::Calldata(_) => true,
-            ProposalAction::Settings(_) => true,
-            ProposalAction::Upgrade(_) => true,
             ProposalAction::Snapshot => false,
+            _ => true,
         }
     }
 }

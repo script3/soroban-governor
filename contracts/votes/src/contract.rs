@@ -53,7 +53,11 @@ pub struct TokenVotes;
 impl Token for TokenVotes {
     fn allowance(e: Env, from: Address, spender: Address) -> i128 {
         let result = storage::get_allowance(&e, &from, &spender);
-        result.amount
+        if e.ledger().sequence() > result.expiration_ledger {
+            0
+        } else {
+            result.amount
+        }
     }
 
     fn approve(e: Env, from: Address, spender: Address, amount: i128, expiration_ledger: u32) {
