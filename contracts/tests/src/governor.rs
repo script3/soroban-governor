@@ -18,6 +18,7 @@ mod governor_contract_wasm {
 ///
 /// ### Arguments
 /// * `admin` - The address of the admin
+/// * `council` - The address of the governor security council
 /// * `settings` - The settings for the governor
 pub fn create_governor<'a>(
     e: &Env,
@@ -41,10 +42,12 @@ pub fn create_governor<'a>(
 ///
 /// ### Arguments
 /// * `admin` - The address of the admin
+/// * `council` - The address of the governor security council
 /// * `settings` - The settings for the governor
 pub fn create_governor_wasm<'a>(
     e: &Env,
     admin: &Address,
+    council: &Address,
     settings: &GovernorSettings,
 ) -> (Address, Address, Address) {
     let governor_address = e.register_contract_wasm(None, governor_contract_wasm::WASM);
@@ -53,7 +56,7 @@ pub fn create_governor_wasm<'a>(
         votes::create_bonding_token_votes_wasm(e, &underlying_token, &governor_address);
     let govenor_client: GovernorContractClient<'a> =
         GovernorContractClient::new(&e, &governor_address);
-    govenor_client.initialize(&vote_address, admin, settings);
+    govenor_client.initialize(&vote_address, council, settings);
     return (governor_address, underlying_token, vote_address);
 }
 

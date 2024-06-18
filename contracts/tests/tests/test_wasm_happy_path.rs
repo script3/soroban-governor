@@ -30,7 +30,7 @@ fn test_wasm_happy_path() {
 
     let settings = default_governor_settings();
     let (governor_address, token_address, votes_address) =
-        create_governor_wasm(&e, &bombadil, &settings);
+        create_governor_wasm(&e, &bombadil, &bombadil, &settings);
     let token_client = MockTokenClient::new(&e, &token_address);
     let votes_client = BondingVotesClient::new(&e, &votes_address);
     let governor_client = GovernorContractClient::new(&e, &governor_address);

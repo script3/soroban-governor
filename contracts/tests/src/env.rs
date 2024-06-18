@@ -37,7 +37,7 @@ impl EnvTestUtils for Env {
             sequence_number: 100,
             network_id: Default::default(),
             base_reserve: 10,
-            min_temp_entry_ttl: 10 * ONE_DAY_LEDGERS,
+            min_temp_entry_ttl: ONE_DAY_LEDGERS,
             min_persistent_entry_ttl: 10 * ONE_DAY_LEDGERS,
             max_entry_ttl: 365 * ONE_DAY_LEDGERS,
         });
