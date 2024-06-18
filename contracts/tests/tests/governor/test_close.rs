@@ -284,11 +284,16 @@ fn test_close_expired() {
     // verify events
     let proposal_votes = governor_client.get_proposal_votes(&proposal_id);
     let events = e.events().all();
-    let tx_events = vec![&e, events.last().unwrap()];
+    let tx_events = events.slice((events.len() - 2)..events.len());
     assert_eq!(
         tx_events,
         vec![
             &e,
+            (
+                governor_address.clone(),
+                (Symbol::new(&e, "proposal_expired"), proposal_id,).into_val(&e),
+                ().into_val(&e)
+            ),
             (
                 governor_address.clone(),
                 (

@@ -116,8 +116,7 @@ pub struct VoteCount {
     pub abstain: i128,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
-#[repr(u32)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[contracttype]
 pub enum ProposalStatus {
     /// The proposal exists and voting has not been closed

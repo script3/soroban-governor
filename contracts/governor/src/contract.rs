@@ -146,6 +146,7 @@ impl Governor for GovernorContract {
         if e.ledger().sequence() > proposal_data.vote_end + settings.grace_period {
             // proposal took too long to be closed. Mark expired and close.
             proposal_data.status = ProposalStatus::Expired;
+            GovernorEvents::proposal_expired(&e, proposal_id);
         } else {
             // proposal closed in time. Check if it passed or failed.
             let votes_client = VotesClient::new(&e, &storage::get_voter_token_address(&e));

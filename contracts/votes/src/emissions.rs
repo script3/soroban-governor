@@ -76,12 +76,12 @@ pub fn update_emissions(e: &Env, total_supply: i128, user: &Address, balance: i1
     }
 }
 
-/// Update the emissions for a balance change
+/// Set the emissions for the vote token
 ///
 /// ### Arguments
 /// * `total_supply` - The total supply of the vote token
-/// * `new_tokens` - The address of the user
-/// * `balance` - The balance of the user
+/// * `new_tokens` - The number of tokens being emitted
+/// * `new_expiration` - The time the emission will expire
 pub fn set_emissions(e: &Env, total_supply: i128, new_tokens: i128, new_expiration: u64) {
     if new_expiration <= e.ledger().timestamp() || new_tokens <= 0 {
         panic_with_error!(e, TokenVotesError::InvalidEmissionConfigError);
@@ -130,9 +130,11 @@ pub fn set_emissions(e: &Env, total_supply: i128, new_tokens: i128, new_expirati
     TokenVotesEvents::set_emissions(e, eps, new_expiration);
 }
 
-/// Update the backstop emissions index for deposits
+/// Update the emission data
 ///
 /// ### Arguments
+/// * `emis_data` - The current emission data
+/// * `emis_config` - The emission config
 /// * `total_supply` - The total supply of the vote token
 ///
 /// ### Returns
@@ -172,8 +174,8 @@ fn update_emission_data(
 /// Update the user's emissions
 ///
 /// ### Arguments
-/// * `user` - The address of the user
-/// * `emis_data` - The emission data
+/// * `user_data_opt` - The user data, or None if it does not exist
+/// * `emis_data` - The emission data of the token
 /// * `balance` - The balance of the user
 ///
 /// ### Returns

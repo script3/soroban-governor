@@ -2,7 +2,8 @@ use soroban_sdk::{panic_with_error, Env};
 
 use crate::{
     constants::{
-        BPS_SCALAR, MAX_GRACE_PERIOD, MAX_PROPOSAL_LIFETIME, MAX_VOTE_PERIOD, MIN_GRACE_PERIOD, MIN_VOTE_PERIOD, MIN_VOTE_THRESHOLD
+        BPS_SCALAR, MAX_GRACE_PERIOD, MAX_PROPOSAL_LIFETIME, MAX_VOTE_PERIOD, MIN_GRACE_PERIOD,
+        MIN_VOTE_PERIOD, MIN_VOTE_THRESHOLD,
     },
     errors::GovernorError,
     types::GovernorSettings,
