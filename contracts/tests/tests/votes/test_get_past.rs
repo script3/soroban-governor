@@ -244,13 +244,11 @@ fn test_past_checkpoints_get_pruned() {
     votes_client.set_vote_sequence(&start_vote_2);
     votes_client.set_vote_sequence(&start_vote_3);
 
-    // Time = 10 days ago
     // Time = 16 days ago
     let deposit_amount_frodo = 1_000 * 10i128.pow(7);
     votes_client.mint(&frodo, &deposit_amount_frodo);
 
     e.jump(ONE_DAY_LEDGERS);
-    // Time = 9 days ago (vote 0 passed by 1 ledger)
     // Time = 15 days ago (vote 0 passed by 1 ledger)
 
     let deposit_amount_samwise = 250 * 10i128.pow(7);
@@ -260,14 +258,12 @@ fn test_past_checkpoints_get_pruned() {
     votes_client.transfer(&samwise, &frodo, &transfer_1_amount);
 
     e.jump(2 * ONE_DAY_LEDGERS);
-    // Time = 6 days ago (vote 1 passed by 1 ledger)
     // Time = 13 days ago (vote 1 passed by 1 ledger)
 
     let deposit_amount_pippin = 5_000 * 10i128.pow(7);
     votes_client.mint(&pippin, &deposit_amount_pippin);
 
     e.jump(12 * ONE_DAY_LEDGERS);
-    // Time = 2 days ago (vote 2 passed by 1 ledger)
     // Time = 1 days ago (vote 2 passed by 1 ledger)
 
     let transfer_2_amount = 125 * 10i128.pow(7);

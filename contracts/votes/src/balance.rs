@@ -109,7 +109,9 @@ pub fn transfer_balance(e: &Env, from: &Address, to: &Address, amount: i128) {
             let total_supply_checkpoint = storage::get_total_supply(e);
             let (_, supply) = total_supply_checkpoint.to_checkpoint_data();
             emissions::update_emissions(e, supply, from, from_balance);
-            emissions::update_emissions(e, supply, to, to_balance);
+            if from != to {
+                emissions::update_emissions(e, supply, to, to_balance);
+            }
         }
 
         let vote_ledgers = storage::get_vote_ledgers(e);
