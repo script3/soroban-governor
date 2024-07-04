@@ -67,8 +67,8 @@ impl VoteCount {
         if against_and_for_votes == 0 {
             return false;
         }
-        let for_votes = (self._for * BPS_SCALAR as i128) / against_and_for_votes;
-        for_votes > vote_threshold as i128
+        let vote_requirement_floor = (against_and_for_votes * vote_threshold as i128) / (BPS_SCALAR as i128);
+        self._for > vote_requirement_floor
     }
 
     /// Count the number of votes included in the quorum
@@ -114,6 +114,20 @@ mod tests {
     }
 
     #[test]
+    fn test_is_over_quorum_precision() {
+        let e = Env::default();
+        let mut vote_count = VoteCount::new();
+        vote_count.add_vote(&e, 1, 1 * 10_i128.pow(18));
+
+        // qourum = 1
+        assert!(!vote_count.is_over_quorum(1, 0b010, 10000 * 10_i128.pow(18)));
+
+        // anything exceeding an exact match pases
+        vote_count.add_vote(&e, 1, 1);
+        assert!(vote_count.is_over_quorum(1, 0b010, 10000 * 10_i128.pow(18)));
+    }
+
+    #[test]
     fn test_is_over_threshold() {
         let e = Env::default();
         let mut vote_count = VoteCount::new();
@@ -125,6 +139,21 @@ mod tests {
         assert!(!vote_count.is_over_threshold(5000));
         assert!(vote_count.is_over_threshold(4999));
 
+        vote_count.add_vote(&e, 1, 1);
+        assert!(vote_count.is_over_threshold(5000));
+    }
+
+    #[test]
+    fn test_is_over_threshold_precision() {
+        let e = Env::default();
+        let mut vote_count = VoteCount::new();
+        vote_count.add_vote(&e, 0, 1 * 10_i128.pow(18));
+        vote_count.add_vote(&e, 1, 1 * 10_i128.pow(18));
+
+        // exact blocked
+        assert!(!vote_count.is_over_threshold(5000));
+
+        // anything exceeding the vote threshold passes
         vote_count.add_vote(&e, 1, 1);
         assert!(vote_count.is_over_threshold(5000));
     }
