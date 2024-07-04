@@ -16,7 +16,7 @@
 
 ## Overview
 
-Soroban Governor is made up of two primary contracts: Governor and Voter. The Governor is the core contract that is responsible for proposal and treasury management. The Voter is a contract that manages voting power and delegation. Often times the Voter will often act as the "protocol token" or "governance token". This library includes 3 different Voter implementations to support a majority of cases, and act as examples for any custom implementation that could be required.
+Soroban Governor is made up of two primary contracts: Governor and Voter. The Governor is the core contract that is responsible for proposal and treasury management. The Voter is a contract that manages voting power and delegation. Often times the Voter will act as the "protocol token" or "governance token". This library includes 3 different Voter implementations to support a majority of cases, and act as examples for any custom implementation that could be required.
 
 ## Governor
 
@@ -26,8 +26,6 @@ The Governor contract is the core contract of the governance system. Its core re
 
 The Governor manages a handful of parameters that define how the proposal flow is handled. These are defined on creation but can be changed via proposal.
 
-* Council `Address`
-    * The address of the security council that can cancel proposals during the vote delay period. If the Governor does not have a council, this should be set to the zero address.
 * Proposal Threshold `i128`
     * The votes required to create a proposal.
 * Vote Delay `u32`
@@ -39,17 +37,27 @@ The Governor manages a handful of parameters that define how the proposal flow i
 * Grace Period `u32`
     * The time (in ledgers) the proposal has to be executed before it expires, starting after the timelock; and the time the proposal has to be closed, starting after the vote period has finished.
 * Quorum `u32`
-    * The percentage of votes (expressed in BPS) needed of the total available votes to consider a vote successful.
+    * The percentage of votes (expressed in BPS) needed of the total available votes to consider a vote successful. The number of quorum votes must exceed the qourum requirement, as the quorum requirement is non-inclusive.
 * Counting Type `u32`
     * Determine which votes to count against the quorum out of for, against, and abstain. The value is encoded such that only the last 3 bits are considered, and follows the structure `MSB...{against}{for}{abstain}`, such that any value != 0 means that type of vote is counted in the quorum. For example, consider 5 == `0x0...0101`, this means that votes "against" and "abstain" are included in the quorum, but votes "for" are not.
 * Vote Threshold `u32`
-    * The percentage of votes "yes" (expressed in BPS) needed to consider a vote successful.
+    * The percentage of votes "yes" (expressed in BPS) needed to consider a vote successful. The number of "yes" votes must exceed the vote threshold requirement, as the vote threshold requirement is non-inclusive.
 
-Protocol Requirements:
+Protocol Requirements (for time bounds, assumes 5s a ledger):
 * Max Life
-    * The max life of a proposal must be at most 31 days, that is, the time from creation to execution must occur in at most 31 days. This is checked by totaling the values of `vote delay`, `vote period`, `timelock`, and `grace period * 2`. This restriction is due to ensure proposals and vote checkpoints can be safely stored in temporary storage, significantly reducing cost.
-* Max `vote period`
-    * The max vote period of a proposal is 7 days. This ensures the Votes contract does not need to track an unnecessary amount of voting checkpoints.
+    * The max life of a proposal must be at most 31 days (535680 ledgers), that is, the time from creation to execution must occur in at most 31 days. This is checked by totaling the values of `vote delay`, `vote period`, `timelock`, and `grace period * 2`. This restriction is due to ensure proposals and vote checkpoints can be safely stored in temporary storage, significantly reducing cost.
+* `vote period` bounds
+    * The max vote period of a proposal is 7 days (120960 ledgers) and the minimum is 1 hour (720 ledgers). This ensures the Votes contract does not need to track an unnecessary amount of voting checkpoints.
+* `grace period` bounds
+    * The max grace period of a proposal is 7 days (120960 ledgers) and the minimum is 1 day (17280 ledgers). This ensures the Votes contract does not need to retain checkpoints for a long period of time.
+* `quorum` and `vote_threshold` bounds
+    * Both quorum and vote threshold must be within 0.1% (10 bps) and 99% (9900 basis points). This ensures the vote calculation math can be computed safely.
+
+### Security Council
+
+The Governor includes a Security Council that has privileged powers for the Governor. The council is defined on creation and can be updated by the DAO through a [proposal](#proposal). A council can cancel any proposal except a `Council` proposal, and propose `Upgrade` proposal that will upgrade the contract code of the Governor.
+
+If no security council is required, it is recommended to set the council to either a locked account or the zero address.
 
 ### Proposal
 
@@ -82,14 +90,16 @@ A proposal is an action the Governor can take that user's get to vote on. Due to
 
 #### **Proposal Types**
 
-The proposal action defines the proposal type. A proposal can be one of 4 types: `Calldata`, `Upgrade`, `Settings`, and `Snapshot`.
+The proposal action defines the proposal type. A proposal can be one of 5 types: `Calldata`, `Upgrade`, `Settings`, `Council` and `Snapshot`.
 
 * Calldata
     * A calldata proposal defines a contract call and the required authentication to be made by the Governor contract. If the proposal is successful, the Governor will invoke the contract and function defined by the calldata during execution.
 * Upgrade
-    * An upgrade proposal defined a new WASM hash for the Governor to be upgraded too. This type of proposal can only be created by the `Security Council`. If the proposal is successful, the Governor will upgrade its WASM implementation to the new WASM during execution.
+    * An upgrade proposal defines a new WASM hash for the Governor to be upgraded too. This type of proposal can only be created by the `Security Council`. If the proposal is successful, the Governor will upgrade its WASM implementation to the new WASM during execution.
 * Settings
     * A settings proposal defines a new set of [parameters](#parameters) for the Governor. If the proposal is successful, the Governor will use the new parameters.
+* Council
+    * A council proposal defines a new Address to become the Security Council. This type of proposal cannot be cancelled by the `Security Council`.
 * Snapshot
     * A snapshot proposal does not contain any action, and only contains a title and description. These proposals also do not need to wait for the `Vote Delay`, and there vote period starts immediately. The proposal result does not matter, as the proposal cannot be executed.
 
@@ -185,4 +195,14 @@ This allows voting power to be defined by something other than a token. For exam
 
 The Soroban Bonding implementation is an extension contract to a Stellar Asset that allows the asset to be safely used in governance systems. Due to issues like double counting, Stellar Assets cannot safely be used as a voting token for a governance system. This contract acts as a Soroban wrapper to bring both checkpoints and delegation to a Stellar Asset.
 
+NOTE: This contract is only intended to be used with a Stellar Asset. For Soroban tokens, it is highly recommended to use [Soroban Votes](#soroban-votes) instead. However, if a Soroban token is used as the underlying token, it must have at most a max total supply of `2^96` to avoid complications with the checkpoint logic.
+
 To get bonded voter tokens, a user can bond their Stellar Asset into the Soroban Bonding contract at a 1-1 rate. These tokens can be unbonded at any time for the user's original Stellar Assets at a 1-1 rate. Bonded voter tokens are non-transferable.
+
+#### Emissions
+
+The Soroban Bonding implementation includes the ability for the Governor contract to emit Stellar Assets to users that bond tokens in the Soroban Bonding contract.
+
+The Governor can pass a proposal to invoke `set_emis` on the Soroban Bonding contract, which emits `amount` of tokens until a specified end `timestamp` (in seconds since epoch). The Governor must be able to transfer `amount` of the Stellar Asset to the Soroban Bonding contract for this proposal to execute, and the resulting total supply after all emissions must be less than `2^96`.
+
+Holders of the bonded token will then start receiving emissions proportionally based on the total supply of bonded tokens. When these emissions are claimed, the emissions will be credited to holders bonded token balance, and voting balance will be updated accordingly.

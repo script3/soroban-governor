@@ -1046,7 +1046,7 @@ dependencies = [
 
 [[package]]
 name = "soroban-governor"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "soroban-sdk",
 ]
@@ -1135,7 +1135,7 @@ dependencies = [
 
 [[package]]
 name = "soroban-votes"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "sep-41-token",
  "soroban-fixed-point-math",
